@@ -1,0 +1,79 @@
+name: Build APK
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: apk-build
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Node-Abhängigkeiten installieren
+        run: npm install --no-audit --no-fund
+
+      - name: Web-App nach www kopieren
+        run: |
+          mkdir -p www
+          cp -r index.html manifest.json sw.js css js icons www/
+
+      - name: Android-Plattform erzeugen
+        run: npx cap add android
+
+      - name: App-Icons und Splashscreen generieren
+        run: >
+          npx @capacitor/assets generate --android
+          --iconBackgroundColor '#10161c'
+          --iconBackgroundColorDark '#10161c'
+          --splashBackgroundColor '#10161c'
+          --splashBackgroundColorDark '#10161c'
+
+      - name: Capacitor synchronisieren
+        run: npx cap sync android
+
+      - name: APK bauen
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug
+
+      - name: APK umbenennen
+        run: cp android/app/build/outputs/apk/debug/app-debug.apk One80.apk
+
+      - name: APK als Artifact hochladen
+        uses: actions/upload-artifact@v4
+        with:
+          name: One80-apk
+          path: One80.apk
+
+      - name: APK als Release veröffentlichen
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: apk
+          name: One80 – Android-App (APK)
+          body: |
+            Automatisch gebaute Android-App (aktuellster Stand).
+
+            **Installation am Handy:**
+            1. `One80.apk` unten herunterladen
+            2. Die Datei antippen
+            3. Falls gefragt: Installation aus dieser Quelle erlauben
+          files: One80.apk
