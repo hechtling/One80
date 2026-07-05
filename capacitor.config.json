@@ -1,0 +1,9 @@
+{
+  "appId": "com.one80.app",
+  "appName": "One80",
+  "webDir": "www",
+  "backgroundColor": "#10161c",
+  "android": {
+    "allowMixedContent": false
+  }
+}

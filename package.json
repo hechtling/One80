@@ -1,0 +1,14 @@
+{
+  "name": "one80",
+  "version": "1.0.0",
+  "description": "One80 – All-in-One Dart Counter & Training App",
+  "private": true,
+  "dependencies": {
+    "@capacitor/android": "^7.4.0",
+    "@capacitor/cli": "^7.4.0",
+    "@capacitor/core": "^7.4.0"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "^3.0.5"
+  }
+}
