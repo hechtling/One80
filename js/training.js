@@ -479,14 +479,14 @@ const Training = (() => {
   /* ---------- Trainings-Tab ---------- */
 
   const TRAIN_DEFS = [
-    { id: 'doubles', icon: '🎯', name: 'tr_doubles', desc: 'tr_doubles_d', go: startDoubles },
-    { id: 'double_single', icon: '🔂', name: 'tr_double_single', desc: 'tr_double_single_d', go: configDoubleSingle },
-    { id: 'checkout', icon: '🏁', name: 'tr_checkout', desc: 'tr_checkout_d', go: startCheckout },
-    { id: 'ladder', icon: '🪜', name: 'tr_ladder', desc: 'tr_ladder_d', go: startLadder },
-    { id: 'scoring', icon: '💥', name: 'tr_scoring', desc: 'tr_scoring_d', go: configScoring },
-    { id: 'bobs27', icon: '🛡', name: 'tr_bobs', desc: 'tr_bobs_d', go: startBobs },
-    { id: 'jdc', icon: '🏅', name: 'tr_jdc', desc: 'tr_jdc_d', go: startJDC },
-    { id: 'catch40', icon: '🕸', name: 'tr_catch', desc: 'tr_catch_d', go: configCatch }
+    { id: 'doubles', icon: 'rings', name: 'tr_doubles', desc: 'tr_doubles_d', go: startDoubles },
+    { id: 'double_single', icon: 'focus', name: 'tr_double_single', desc: 'tr_double_single_d', go: configDoubleSingle },
+    { id: 'checkout', icon: 'flag', name: 'tr_checkout', desc: 'tr_checkout_d', go: startCheckout },
+    { id: 'ladder', icon: 'ladder', name: 'tr_ladder', desc: 'tr_ladder_d', go: startLadder },
+    { id: 'scoring', icon: 'flame', name: 'tr_scoring', desc: 'tr_scoring_d', go: configScoring },
+    { id: 'bobs27', icon: 'shield', name: 'tr_bobs', desc: 'tr_bobs_d', go: startBobs },
+    { id: 'jdc', icon: 'award', name: 'tr_jdc', desc: 'tr_jdc_d', go: startJDC },
+    { id: 'catch40', icon: 'catch', name: 'tr_catch', desc: 'tr_catch_d', go: configCatch }
   ];
 
   function trainProfile() {
@@ -495,7 +495,7 @@ const Training = (() => {
   }
 
   function renderTab(view) {
-    view.appendChild(h('h1', null, '💪 ' + t('nav_training')));
+    view.appendChild(h('h1', null, t('nav_training'), h('span', { class: 'dot' }, '.')));
     if (!Store.state.profiles.length) {
       view.appendChild(h('div', { class: 'card center' },
         h('div', { class: 'sub', style: 'margin-bottom:10px' }, t('need_profile_train')),
@@ -519,7 +519,7 @@ const Training = (() => {
       const tr = cur && cur.trainings[m.id];
       view.appendChild(h('div', { class: 'card tap', onClick: () => { if (cur) m.go(cur); } },
         h('div', { class: 'row' },
-          h('div', { style: 'font-size:28px' }, m.icon),
+          h('div', { class: 'gic' }, UI.ic(m.icon)),
           h('div', { class: 'grow' },
             h('div', { style: 'font-weight:700;font-size:16px' }, t(m.name)),
             h('div', { class: 'sub' }, t(m.desc))),

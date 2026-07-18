@@ -59,7 +59,7 @@ const App = (() => {
       }, e));
     });
     UI.modal({
-      title: p ? '✏️ ' + p.name : '＋ ' + t('new_profile'),
+      title: p ? p.name : '＋ ' + t('new_profile'),
       body: h('div', null, h('label', { class: 'fld' }, t('profile_name'), nameInp), emRow),
       buttons: [
         { label: t('cancel'), cls: 'sec' },
@@ -81,7 +81,7 @@ const App = (() => {
     show(view => {
       view.appendChild(h('div', { class: 'mhead' },
         h('button', { class: 'iconbtn', onClick: () => back() }, '‹'),
-        h('div', { class: 'ttl' }, '👤 ' + t('profiles'))));
+        h('div', { class: 'ttl' }, t('profiles'))));
       view.appendChild(h('button', {
         class: 'btn', style: 'margin-bottom:12px',
         onClick: () => editProfile(null, () => rerender())
@@ -124,7 +124,7 @@ const App = (() => {
       const s = Store.state.settings;
       view.appendChild(h('div', { class: 'mhead' },
         h('button', { class: 'iconbtn', onClick: () => back() }, '‹'),
-        h('div', { class: 'ttl' }, '⚙️ ' + t('settings'))));
+        h('div', { class: 'ttl' }, t('settings'))));
       const seg = (vals, labels, cur, onCh) => {
         const el = h('div', { class: 'seg' });
         vals.forEach((v, i) => el.appendChild(h('button', {
@@ -135,22 +135,22 @@ const App = (() => {
       };
       view.appendChild(h('div', { class: 'card' },
         h('label', { class: 'fld' }, t('theme'),
-          seg(['dark', 'light'], ['🌙 ' + t('theme_dark'), '☀️ ' + t('theme_light')], s.theme, v => {
+          seg(['dark', 'light'], [t('theme_dark'), t('theme_light')], s.theme, v => {
             s.theme = v; Store.save();
             document.documentElement.setAttribute('data-theme', v);
           })),
         h('label', { class: 'fld' }, t('language'),
-          seg(['de', 'en'], ['🇩🇪 Deutsch', '🇬🇧 English'], s.lang, v => {
+          seg(['de', 'en'], ['Deutsch', 'English'], s.lang, v => {
             s.lang = v; Store.save();
             document.documentElement.lang = v;
             updateNav(); rerender();
           })),
         h('label', { class: 'fld' }, t('default_input'),
-          seg(['board', 'keys', 'sum'], ['🎯 ' + t('inp_board'), '🔢 ' + t('inp_keys'), 'Σ ' + t('inp_sum')], s.input, v => { s.input = v; Store.save(); }))));
+          seg(['board', 'keys', 'sum'], [t('inp_board'), t('inp_keys'), t('inp_sum')], s.input, v => { s.input = v; Store.save(); }))));
       view.appendChild(h('div', { class: 'card' },
-        toggleLine('🔊 ' + t('caller_lbl'), 'caller'),
-        toggleLine('🎵 ' + t('sfx_lbl'), 'sfx'),
-        toggleLine('📳 ' + t('vibrate_lbl'), 'vibrate')));
+        toggleLine(t('caller_lbl'), 'caller'),
+        toggleLine(t('sfx_lbl'), 'sfx'),
+        toggleLine(t('vibrate_lbl'), 'vibrate')));
     });
   }
 
@@ -159,7 +159,7 @@ const App = (() => {
     show(view => {
       view.appendChild(h('div', { class: 'mhead' },
         h('button', { class: 'iconbtn', onClick: () => back() }, '‹'),
-        h('div', { class: 'ttl' }, '💾 Backup')));
+        h('div', { class: 'ttl' }, 'Backup')));
       view.appendChild(h('div', { class: 'card' },
         h('div', { class: 'sub', style: 'margin-bottom:10px' }, t('backup_hint')),
         h('button', {
@@ -203,7 +203,7 @@ const App = (() => {
     show(view => {
       view.appendChild(h('div', { class: 'mhead' },
         h('button', { class: 'iconbtn', onClick: () => back() }, '‹'),
-        h('div', { class: 'ttl' }, '🌍 ' + t('more_world'))));
+        h('div', { class: 'ttl' }, t('more_world'))));
       view.appendChild(h('div', { class: 'sub', style: 'margin-bottom:12px' }, t('world_hint')));
       WORLD.forEach(w => {
         view.appendChild(h('div', { class: 'card tap', onClick: () => window.open(w.url, '_blank') },
@@ -222,19 +222,19 @@ const App = (() => {
     show(view => {
       view.appendChild(h('div', { class: 'mhead' },
         h('button', { class: 'iconbtn', onClick: () => back() }, '‹'),
-        h('div', { class: 'ttl' }, 'ℹ️ ' + t('more_about'))));
+        h('div', { class: 'ttl' }, t('more_about'))));
       view.appendChild(h('div', { class: 'hero center' },
-        h('div', { style: 'font-size:44px' }, '🎯'),
-        h('div', { class: 'big' }, 'One80'),
-        h('div', { class: 'sub' }, t('about_tagline') + ' · v1.0')));
+        h('div', { class: 'gic hot', style: 'width:58px;height:58px;border-radius:18px;margin:0 auto 10px' }, UI.ic('target')),
+        h('div', { class: 'big' }, 'One80', h('span', { class: 'dot', style: 'color:var(--accent)' }, '.')),
+        h('div', { class: 'sub' }, t('about_tagline') + ' · v1.1')));
       if (installEvt) {
         view.appendChild(h('button', {
           class: 'btn', style: 'margin-bottom:12px',
           onClick: async () => { installEvt.prompt(); installEvt = null; }
-        }, '📲 ' + t('install_btn')));
+        }, t('install_btn')));
       }
       view.appendChild(h('div', { class: 'card' },
-        h('div', { style: 'font-weight:700;margin-bottom:6px' }, '📲 ' + t('install_title')),
+        h('div', { style: 'font-weight:700;margin-bottom:6px' }, t('install_title')),
         h('div', { class: 'sub' }, t('install_hint'))));
       view.appendChild(h('div', { class: 'card sub' }, t('about_text')));
     });
@@ -242,19 +242,19 @@ const App = (() => {
 
   /* ---------- Mehr-Tab ---------- */
   function moreTab(view) {
-    view.appendChild(h('h1', null, '☰ ' + t('nav_more')));
+    view.appendChild(h('h1', null, t('nav_more'), h('span', { class: 'dot' }, '.')));
     const items = [
-      ['👤', t('profiles'), profilesScreen],
-      ['👥', t('friends'), () => Friends.screen()],
-      ['🌍', t('more_world'), worldScreen],
-      ['⚙️', t('settings'), settingsScreen],
-      ['💾', 'Backup', backupScreen],
-      ['ℹ️', t('more_about'), aboutScreen]
+      ['user', t('profiles'), profilesScreen],
+      ['users', t('friends'), () => Friends.screen()],
+      ['world', t('more_world'), worldScreen],
+      ['sliders', t('settings'), settingsScreen],
+      ['save', 'Backup', backupScreen],
+      ['info', t('more_about'), aboutScreen]
     ];
     const card = h('div', { class: 'card' });
     items.forEach(([ic, label, go]) => {
       card.appendChild(h('div', { class: 'listitem', onClick: go },
-        h('div', { class: 'ic' }, ic),
+        h('div', { class: 'ic' }, UI.ic(ic)),
         h('div', { class: 'grow', style: 'font-weight:600' }, label),
         h('div', { class: 'arr' }, '›')));
     });

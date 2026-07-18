@@ -57,6 +57,42 @@ const UI = (() => {
     });
   }
 
+  /* ---------- Stroke-Icons (24er ViewBox, erben currentColor) ---------- */
+  const ICONS = {
+    target: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/>',
+    bolt: '<path d="M13 3 5 14h6l-1 7 8-11h-6l1-7z"/>',
+    chart: '<path d="M5 20v-6M12 20V9M19 20V4"/>',
+    trophy: '<path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4z"/><path d="M7 6H4a3 3 0 0 0 3 4M17 6h3a3 3 0 0 1-3 4"/>',
+    menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',
+    back: '<path d="M14 6l-6 6 6 6"/>',
+    hash: '<path d="M5 9h14M5 15h14M11 4l-2 16M15 4l-2 16"/>',
+    clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+    stack: '<path d="m12 4 8 4.5-8 4.5-8-4.5L12 4z"/><path d="m4 13.5 8 4.5 8-4.5"/>',
+    skull: '<path d="M12 3a7.5 7.5 0 0 1 7.5 7.5c0 2.4-1.2 4.1-3 5.2V19a2 2 0 0 1-2 2h-5a2 2 0 0 1-2-2v-3.3c-1.8-1.1-3-2.8-3-5.2A7.5 7.5 0 0 1 12 3z"/><circle cx="9.5" cy="11" r="1"/><circle cx="14.5" cy="11" r="1"/>',
+    divide: '<circle cx="12" cy="5.5" r="1"/><circle cx="12" cy="18.5" r="1"/><path d="M5 12h14"/>',
+    pause: '<path d="M9 5v14M15 5v14"/>',
+    rings: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5.5"/>',
+    focus: '<circle cx="12" cy="12" r="7"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/>',
+    flag: '<path d="M6 21V4"/><path d="M6 4h11l-2.5 3.5L17 11H6"/>',
+    ladder: '<path d="M8 3v18M16 3v18M8 8h8M8 13h8M8 18h8"/>',
+    flame: '<path d="M12 3c1 3 5 5 5 9.5a5 5 0 0 1-10 0C7 10 9 8.5 9.5 6.5c1 1 1.7 2 2 3.5C12.5 8 12 5 12 3z"/>',
+    shield: '<path d="M12 3l7 3v5.5c0 4.2-3 6.8-7 9.5-4-2.7-7-5.3-7-9.5V6l7-3z"/>',
+    award: '<circle cx="12" cy="9" r="5"/><path d="M9.5 13.5 7.5 21l4.5-2 4.5 2-2-7.5"/>',
+    catch: '<circle cx="12" cy="12" r="9"/><path d="M8.5 12.5l2.5 2.5 5-5.5"/>',
+    user: '<circle cx="12" cy="8" r="4"/><path d="M4 21c.7-4 4-6 8-6s7.3 2 8 6"/>',
+    users: '<circle cx="9" cy="8.5" r="3.5"/><path d="M3 20c.5-3.4 3-5 6-5s5.5 1.6 6 5"/><path d="M15.5 5.4a3.5 3.5 0 0 1 0 6.2M18 15.5c1.9.8 3 2.2 3.4 4.5"/>',
+    world: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.8 3.3 2.8 14.7 0 18M12 3c-2.8 3.3-2.8 14.7 0 18"/>',
+    sliders: '<path d="M6 4v3M6 13v7M12 4v7M12 17v3M18 4v9M18 19v1"/><circle cx="6" cy="10" r="2"/><circle cx="12" cy="14" r="2"/><circle cx="18" cy="16" r="2"/>',
+    save: '<path d="M12 4v10m0 0-3.5-3.5M12 14l3.5-3.5"/><path d="M4 17v1a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3v-1"/>',
+    info: '<circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11.2 12H12v4h.8"/>'
+  };
+
+  function ic(name) {
+    const t = document.createElement('div');
+    t.innerHTML = '<svg class="sic" viewBox="0 0 24 24" aria-hidden="true">' + (ICONS[name] || ICONS.target) + '</svg>';
+    return t.firstChild;
+  }
+
   /* ---------- Dartboard SVG ---------- */
   const ORDER = [20,1,18,4,13,6,10,15,2,17,3,19,7,16,8,11,14,9,12,5];
   const RAD = { db: 3.73, sb: 9.35, tin: 58.2, tout: 62.9, din: 95.3, dout: 100 };
@@ -278,7 +314,7 @@ const UI = (() => {
   const f1 = x => (Math.round(x * 10) / 10).toFixed(1);
   const dstr = ts => new Date(ts).toLocaleDateString(Store.state.settings.lang === 'de' ? 'de-DE' : 'en-GB', { day: '2-digit', month: '2-digit', year: '2-digit' });
 
-  return { toast, modal, confirm, boardSVG, lineChart, sfx, say, callScore, buzz, wakeLock, f1, dstr };
+  return { toast, modal, confirm, boardSVG, lineChart, sfx, say, callScore, buzz, wakeLock, f1, dstr, ic };
 })();
 
 /* ---------- Dart-Mathematik ---------- */

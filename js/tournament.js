@@ -323,7 +323,7 @@ const Tour = (() => {
 
   /* ---------- Tab ---------- */
   function renderTab(view) {
-    view.appendChild(h('h1', null, '🏆 ' + t('nav_tour')));
+    view.appendChild(h('h1', null, t('nav_tour'), h('span', { class: 'dot' }, '.')));
     view.appendChild(h('button', { class: 'btn', style: 'margin-bottom:14px', onClick: createScreen }, '＋ ' + t('new_tour')));
     const ts = Store.state.tournaments.slice().reverse();
     if (!ts.length) {

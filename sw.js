@@ -1,9 +1,10 @@
-const VERSION = 'one80-v1';
+const VERSION = 'one80-v2';
 const ASSETS = [
   './',
   './index.html',
   './manifest.json',
   './css/style.css',
+  './fonts/manrope-latin.woff2',
   './js/i18n.js',
   './js/store.js',
   './js/ui.js',

@@ -957,9 +957,9 @@ const Games = (() => {
   /* ================= SPIELEN-TAB ================= */
 
   const GAME_DEFS = [
-    { icon: '🎯', name: 'X01', desc: 'g_x01_d', go: configX01 },
+    { icon: 'target', name: 'X01', desc: 'g_x01_d', go: configX01 },
     {
-      icon: '🦗', name: 'Cricket', desc: 'g_cricket_d',
+      icon: 'hash', name: 'Cricket', desc: 'g_cricket_d',
       go: () => simpleConfig('Cricket', {
         min: 2, max: 4,
         extras: host => {
@@ -970,7 +970,7 @@ const Games = (() => {
       }, (players, ex) => startCricket(players, ex.seg.value() === 'cut'))
     },
     {
-      icon: '🕐', name: 'Around the Clock', desc: 'g_atc_d',
+      icon: 'clock', name: 'Around the Clock', desc: 'g_atc_d',
       go: () => simpleConfig('Around the Clock', {
         min: 1, max: 8,
         extras: host => {
@@ -984,7 +984,7 @@ const Games = (() => {
       }, (players, ex) => startATC(players, ex.seg.value(), ex.bull()))
     },
     {
-      icon: '🀄', name: 'Shanghai', desc: 'g_shanghai_d',
+      icon: 'stack', name: 'Shanghai', desc: 'g_shanghai_d',
       go: () => simpleConfig('Shanghai', {
         min: 1, max: 8,
         extras: host => {
@@ -995,7 +995,7 @@ const Games = (() => {
       }, (players, ex) => startShanghai(players, ex.seg.value()))
     },
     {
-      icon: '🔪', name: 'Killer', desc: 'g_killer_d',
+      icon: 'skull', name: 'Killer', desc: 'g_killer_d',
       go: () => simpleConfig('Killer', {
         min: 2, max: 8,
         extras: host => {
@@ -1006,18 +1006,18 @@ const Games = (() => {
       }, (players, ex) => startKiller(players, ex.seg.value()))
     },
     {
-      icon: '➗', name: 'Halve It', desc: 'g_halve_d',
+      icon: 'divide', name: 'Halve It', desc: 'g_halve_d',
       go: () => simpleConfig('Halve It', { min: 1, max: 8 }, players => startHalve(players))
     }
   ];
 
   function renderTab(view) {
-    view.appendChild(h('h1', null, '🎯 One80'));
+    view.appendChild(h('h1', null, 'One80', h('span', { class: 'dot' }, '.')));
     const a = Store.state.active;
     if (a && a.kind === 'x01') {
-      view.appendChild(h('div', { class: 'card tap', style: 'border-color:var(--gold)', onClick: () => resumeActive() },
+      view.appendChild(h('div', { class: 'card tap', style: 'border-color:var(--accent)', onClick: () => resumeActive() },
         h('div', { class: 'row' },
-          h('div', { style: 'font-size:26px' }, '⏸'),
+          h('div', { class: 'gic hot' }, UI.ic('pause')),
           h('div', { class: 'grow' },
             h('div', { style: 'font-weight:700' }, t('resume_match')),
             h('div', { class: 'sub' }, a.st.cfg.start + ' · ' + t('leg_no', { n: a.st.legNo }) + ' · ' +
@@ -1027,9 +1027,9 @@ const Games = (() => {
     GAME_DEFS.forEach(g => {
       view.appendChild(h('div', { class: 'card tap', onClick: g.go },
         h('div', { class: 'row' },
-          h('div', { style: 'font-size:28px' }, g.icon),
+          h('div', { class: 'gic' }, UI.ic(g.icon)),
           h('div', { class: 'grow' },
-            h('div', { style: 'font-weight:700;font-size:17px' }, g.name),
+            h('div', { style: 'font-weight:700;font-size:16.5px' }, g.name),
             h('div', { class: 'sub' }, t(g.desc))),
           h('div', { class: 'arr' }, '›'))));
     });

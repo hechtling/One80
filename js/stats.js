@@ -278,7 +278,7 @@ const Stats = (() => {
   }
 
   function renderTab(view) {
-    view.appendChild(h('h1', null, '📈 ' + t('nav_stats')));
+    view.appendChild(h('h1', null, t('nav_stats'), h('span', { class: 'dot' }, '.')));
     if (!Store.state.profiles.length) {
       view.appendChild(h('div', { class: 'card center' },
         h('div', { class: 'sub', style: 'margin-bottom:10px' }, t('need_profile_stats')),
