@@ -34,14 +34,17 @@ const Training = (() => {
     App.gameMode(true); UI.wakeLock(true);
     const hist = [];
     App.show(view => {
-      view.appendChild(h('div', { class: 'mhead' },
+      const wrap = h('div', { class: 'mwrap' });
+      view.appendChild(wrap);
+      wrap.appendChild(h('div', { class: 'mtop' },
         h('button', {
-          class: 'iconbtn', onClick: () => UI.confirm(t('quit_training_q'), () => { cleanup(); App.root('training'); })
+          class: 'cbtn', onClick: () => UI.confirm(t('quit_training_q'), () => { cleanup(); App.root('training'); })
         }, '✕'),
-        h('div', { class: 'ttl' }, session.title, h('div', { class: 'sub2' }, profile.emoji + ' ' + profile.name))));
-      const taskCard = h('div', { class: 'hero center', style: 'padding:12px' });
-      const inpHost = h('div');
-      view.append(taskCard, inpHost);
+        h('div', { class: 'mmeta' }, h('b', null, session.title), ' · ' + profile.name),
+        h('button', { class: 'cbtn', onClick: doUndo }, '⌫')));
+      const taskCard = h('div', { class: 'mcard center', style: 'gap:6px;padding:20px' });
+      const inpHost = h('div', { style: 'margin-top:auto;display:flex;flex-direction:column' });
+      wrap.append(taskCard, inpHost);
       Input.create(inpHost, {
         modes: ['board', 'keys'],
         mode: Store.state.settings.input === 'sum' ? 'board' : Store.state.settings.input,
@@ -54,18 +57,19 @@ const Training = (() => {
           update();
           if (ev.sessionEnd) { session.st.over = true; finish(); }
         },
-        onUndo: () => {
-          if (!hist.length || session.st.over) return;
-          const s = JSON.parse(hist.pop());
-          Object.keys(session.st).forEach(k => delete session.st[k]);
-          Object.assign(session.st, s);
-          update();
-        }
+        onUndo: doUndo
       });
+      function doUndo() {
+        if (!hist.length || session.st.over) return;
+        const s = JSON.parse(hist.pop());
+        Object.keys(session.st).forEach(k => delete session.st[k]);
+        Object.assign(session.st, s);
+        update();
+      }
       function update() {
         taskCard.innerHTML = '';
         taskCard.appendChild(h('div', { class: 'sub' }, session.status()));
-        taskCard.appendChild(h('div', { class: 'big', style: 'font-size:34px;margin:4px 0' }, session.label()));
+        taskCard.appendChild(h('div', { style: 'font-size:44px;font-weight:700;letter-spacing:-1px;margin:2px 0' }, session.label()));
         const pr = Math.min(1, session.progress());
         taskCard.appendChild(h('div', { class: 'bar', style: 'margin-top:6px' }, h('i', { style: `width:${pr * 100}%` })));
       }
@@ -79,8 +83,7 @@ const Training = (() => {
         Store.save();
         UI.sfx.win();
         const body = h('div', null,
-          h('div', { class: 'center', style: 'font-size:40px' }, sum.icon || '🎉'),
-          h('div', { class: 'center', style: 'font-size:34px;font-weight:800;margin:6px 0' }, sum.value + (sum.unit || '')),
+          h('div', { class: 'center', style: 'font-size:38px;font-weight:700;margin:6px 0' }, sum.value + (sum.unit || '')),
           prev !== null ? h('div', { class: 'center sub' }, t('prev_best') + ': ' + prev + (sum.unit || '')) : null,
           h('div', { style: 'margin-top:10px' },
             (sum.lines || []).map(l => h('div', { class: 'toggline' }, h('span', { class: 'sub' }, l[0]), h('span', { style: 'font-weight:700' }, String(l[1]))))));
@@ -88,7 +91,7 @@ const Training = (() => {
           title: session.title, body, dismiss: false,
           buttons: [
             { label: t('done'), onClick: () => { cleanup(); App.root('training'); } },
-            { label: '↻ ' + t('again'), cls: 'sec', onClick: () => { cleanup(); restart(); } }
+            { label: t('again'), cls: 'sec', onClick: () => { cleanup(); restart(); } }
           ]
         });
       }
@@ -96,14 +99,14 @@ const Training = (() => {
     });
   }
 
-  /* ---------- Doppel rundum ---------- */
+  /* ---------- Doppel-Runde ---------- */
   function startDoubles(profile) {
     const seq = [];
     for (let n = 1; n <= 20; n++) seq.push('D' + n);
     seq.push('DB');
     const st = { seq, idx: 0, dartNo: 0, hits: 0, darts: 0, perD: {}, over: false };
     trainShell(profile, 'doubles', {
-      st, title: '🎯 ' + t('tr_doubles'),
+      st, title: t('tr_doubles'),
       label: () => dispKey(st.seq[st.idx] || ''),
       status: () => t('hits') + ': ' + st.hits + ' / ' + st.darts,
       progress: () => st.idx / st.seq.length,
@@ -121,7 +124,7 @@ const Training = (() => {
       summary() {
         const pct = Math.round((st.hits / st.darts) * 100);
         return {
-          icon: '🎯', value: pct, unit: '%',
+          value: pct, unit: ' %',
           lines: [[t('hits'), st.hits + ' / ' + st.darts]],
           apply: () => mergeDoubles(profile, st.perD),
           ctx: { doubles50: pct >= 50 && st.darts >= 21 }
@@ -134,7 +137,7 @@ const Training = (() => {
   function startDoubleSingle(profile, key, max) {
     const st = { key, max, darts: 0, hits: 0, perD: {}, over: false };
     trainShell(profile, 'double_single', {
-      st, title: '🔂 ' + t('tr_double_single'),
+      st, title: t('tr_double_single'),
       label: () => dispKey(st.key),
       status: () => st.hits + ' / ' + st.darts + ' · ' + (st.max - st.darts) + ' ' + t('darts_left'),
       progress: () => st.darts / st.max,
@@ -150,7 +153,7 @@ const Training = (() => {
       summary() {
         const pct = Math.round((st.hits / st.darts) * 100);
         return {
-          icon: '🔂', value: pct, unit: '%',
+          value: pct, unit: ' %',
           lines: [[dispKey(st.key), st.hits + ' / ' + st.darts]],
           apply: () => mergeDoubles(profile, st.perD),
           ctx: { doubles50: pct >= 50 && st.darts >= 20 }
@@ -176,22 +179,22 @@ const Training = (() => {
     });
   }
 
-  /* ---------- Checkout-Training ---------- */
+  /* ---------- Checkout-Trainer ---------- */
   function randFinish() {
     let v;
-    do { v = 61 + Math.floor(Math.random() * 110); } while (BOGEY.includes(v));
+    do { v = 41 + Math.floor(Math.random() * 130); } while (BOGEY.includes(v));
     return v;
   }
   function startCheckout(profile) {
     const st = { count: 10, idx: 0, task: { rem: randFinish(), start: 0, darts: 0, done: false, success: false }, results: [], perD: {}, over: false };
     st.task.start = st.task.rem;
     trainShell(profile, 'checkout', {
-      st, title: '🏁 ' + t('tr_checkout'),
+      st, title: t('tr_checkout'),
       label: () => String(st.task.rem),
       status: () => {
         const route = DartMath.checkout(st.task.rem, 9 - st.task.darts > 3 ? 3 : Math.max(1, 9 - st.task.darts), 'double');
         return t('task_x_of', { a: st.idx + 1, b: st.count }) + ' · ' + (9 - st.task.darts) + ' Darts' +
-          (route ? ' · ' + route.join(' ') : '');
+          (route ? ' · ' + route.map(UI.dartLabel).join(' ') : '');
       },
       progress: () => st.idx / st.count,
       dart(d) {
@@ -211,7 +214,7 @@ const Training = (() => {
       summary() {
         const ok = st.results.filter(Boolean).length;
         return {
-          icon: '🏁', value: Math.round((ok / st.count) * 100), unit: '%',
+          value: Math.round((ok / st.count) * 100), unit: ' %',
           lines: [[t('checked'), ok + ' / ' + st.count]],
           apply: () => mergeDoubles(profile, st.perD),
           ctx: {}
@@ -233,7 +236,7 @@ const Training = (() => {
       task: { rem: start, darts: 0, done: false, success: false }, perD: {}, over: false
     };
     trainShell(profile, 'ladder', {
-      st, title: '🪜 ' + t('tr_ladder'),
+      st, title: t('tr_ladder'),
       label: () => String(st.task.rem),
       status: () => t('level') + ' ' + st.level + ' · ' + t('task_x_of', { a: st.attempts + 1, b: st.max }) + ' · ' + (9 - st.task.darts) + ' Darts',
       progress: () => st.attempts / st.max,
@@ -243,8 +246,8 @@ const Training = (() => {
         const ev = {};
         if (st.task.done) {
           st.attempts++;
-          if (st.task.success) { st.wins++; st.level = ladderStep(st.level, 1); ev.toast = '⬆ ' + t('level') + ' ' + st.level; ev.say = 'Game shot!'; }
-          else { st.level = ladderStep(st.level, -1); ev.toast = '⬇ ' + t('level') + ' ' + st.level; }
+          if (st.task.success) { st.wins++; st.level = ladderStep(st.level, 1); ev.toast = '↑ ' + t('level') + ' ' + st.level; ev.say = 'Game shot!'; }
+          else { st.level = ladderStep(st.level, -1); ev.toast = '↓ ' + t('level') + ' ' + st.level; }
           if (st.attempts >= st.max) ev.sessionEnd = true;
           else st.task = { rem: st.level, darts: 0, done: false, success: false };
         }
@@ -252,7 +255,7 @@ const Training = (() => {
       },
       summary() {
         return {
-          icon: '🪜', value: st.level, unit: '',
+          value: st.level, unit: '',
           lines: [[t('checked'), st.wins + ' / ' + st.max], [t('level'), start + ' → ' + st.level]],
           apply: () => { profile.ladderLevel = st.level; mergeDoubles(profile, st.perD); },
           ctx: {}
@@ -261,12 +264,12 @@ const Training = (() => {
     }, () => startLadder(profile));
   }
 
-  /* ---------- Scoring-Training ---------- */
+  /* ---------- Scoring ---------- */
   function startScoring(profile, target, visits) {
     const st = { target, visits, visitIdx: 0, dartNo: 0, points: 0, hitT: 0, hitOther: 0, miss: 0, over: false };
     const tl = target === 25 ? 'Bull' : 'T' + target;
     trainShell(profile, 'scoring', {
-      st, title: '💥 ' + t('tr_scoring'),
+      st, title: t('tr_scoring'),
       label: () => tl,
       status: () => t('round_x_of', { a: st.visitIdx + 1, b: st.visits }) + ' · ' + st.points + ' ' + t('points'),
       progress: () => st.visitIdx / st.visits,
@@ -285,7 +288,7 @@ const Training = (() => {
       summary() {
         const ppr = Math.round((st.points / st.visits) * 10) / 10;
         return {
-          icon: '💥', value: ppr, unit: ' PPR',
+          value: ppr, unit: ' PPR',
           lines: [
             [t('points'), st.points],
             [st.target === 25 ? 'Bullseye' : 'Triple', st.hitT],
@@ -321,7 +324,7 @@ const Training = (() => {
     const st = { seq, idx: 0, dartNo: 0, roundHits: 0, score: 27, dead: false, perD: {}, over: false };
     const dval = key => key === 'DB' ? 50 : 2 * parseInt(key.slice(1), 10);
     trainShell(profile, 'bobs27', {
-      st, title: '🛡 Bob\'s 27',
+      st, title: "Bob's 27",
       label: () => dispKey(st.seq[st.idx] || ''),
       status: () => t('points') + ': ' + st.score,
       progress: () => st.idx / st.seq.length,
@@ -344,7 +347,6 @@ const Training = (() => {
       summary() {
         const survived = !st.dead && st.idx >= st.seq.length;
         return {
-          icon: survived ? '🛡' : '💀',
           value: Math.max(0, st.score), unit: '',
           lines: [[t('survived'), survived ? '✓' : '✗ (' + dispKey(st.seq[Math.min(st.idx, st.seq.length - 1)]) + ')']],
           apply: () => mergeDoubles(profile, st.perD),
@@ -364,7 +366,7 @@ const Training = (() => {
     };
     const phaseName = () => st.phase === 1 ? 'Shanghai' : st.phase === 2 ? 'Doubles' : '501';
     trainShell(profile, 'jdc', {
-      st, title: '🏅 JDC Challenge',
+      st, title: 'JDC Challenge',
       label: () => {
         if (st.phase === 1) { const v = st.p1.targets[st.p1.idx]; return v === 25 ? 'Bull' : String(v); }
         if (st.phase === 2) return dispKey(st.p2.seq[st.p2.idx]);
@@ -414,7 +416,7 @@ const Training = (() => {
       },
       summary() {
         return {
-          icon: '🏅', value: st.total, unit: ' Pkt.',
+          value: st.total, unit: ' Pkt.',
           lines: [
             ['Shanghai', st.p1.pts],
             ['Doubles', st.p2.hits + ' × 50'],
@@ -433,7 +435,7 @@ const Training = (() => {
       task: { rem: from, darts: 0, done: false, success: false }, perD: {}, over: false
     };
     trainShell(profile, 'catch40', {
-      st, title: '🕸 Catch 40',
+      st, title: 'Catch 40',
       label: () => String(st.task.rem),
       status: () => t('checkout') + ' ' + st.cur + ' / ' + st.to + ' · ' + t('caught') + ': ' + st.catches + ' · ' + (6 - st.task.darts) + ' Darts',
       progress: () => (st.cur - st.from) / st.total,
@@ -452,7 +454,7 @@ const Training = (() => {
       },
       summary() {
         return {
-          icon: '🕸', value: st.catches, unit: ' / ' + st.total,
+          value: st.catches, unit: ' / ' + st.total,
           lines: [[t('range'), st.from + '–' + st.to]],
           apply: () => mergeDoubles(profile, st.perD),
           ctx: {}
@@ -479,14 +481,14 @@ const Training = (() => {
   /* ---------- Trainings-Tab ---------- */
 
   const TRAIN_DEFS = [
-    { id: 'doubles', icon: 'rings', name: 'tr_doubles', desc: 'tr_doubles_d', go: startDoubles },
-    { id: 'double_single', icon: 'focus', name: 'tr_double_single', desc: 'tr_double_single_d', go: configDoubleSingle },
-    { id: 'checkout', icon: 'flag', name: 'tr_checkout', desc: 'tr_checkout_d', go: startCheckout },
-    { id: 'ladder', icon: 'ladder', name: 'tr_ladder', desc: 'tr_ladder_d', go: startLadder },
-    { id: 'scoring', icon: 'flame', name: 'tr_scoring', desc: 'tr_scoring_d', go: configScoring },
-    { id: 'bobs27', icon: 'shield', name: 'tr_bobs', desc: 'tr_bobs_d', go: startBobs },
-    { id: 'jdc', icon: 'award', name: 'tr_jdc', desc: 'tr_jdc_d', go: startJDC },
-    { id: 'catch40', icon: 'catch', name: 'tr_catch', desc: 'tr_catch_d', go: configCatch }
+    { id: 'checkout', badge: 'CO', name: 'tr_checkout', desc: 'tr_checkout_d', go: startCheckout },
+    { id: 'scoring', badge: 'T20', name: 'tr_scoring', desc: 'tr_scoring_d', go: configScoring },
+    { id: 'doubles', badge: 'D', name: 'tr_doubles', desc: 'tr_doubles_d', go: startDoubles },
+    { id: 'bobs27', badge: '27', name: 'tr_bobs', desc: 'tr_bobs_d', go: startBobs },
+    { id: 'double_single', badge: 'D+', name: 'tr_double_single', desc: 'tr_double_single_d', go: configDoubleSingle },
+    { id: 'ladder', badge: '170', name: 'tr_ladder', desc: 'tr_ladder_d', go: startLadder },
+    { id: 'jdc', badge: 'JDC', name: 'tr_jdc', desc: 'tr_jdc_d', go: startJDC },
+    { id: 'catch40', badge: 'C40', name: 'tr_catch', desc: 'tr_catch_d', go: configCatch }
   ];
 
   function trainProfile() {
@@ -495,38 +497,38 @@ const Training = (() => {
   }
 
   function renderTab(view) {
-    view.appendChild(h('h1', null, t('nav_training'), h('span', { class: 'dot' }, '.')));
+    view.appendChild(h('h1', { style: 'margin-bottom:4px' }, t('nav_training')));
+    view.appendChild(h('div', { class: 'sub', style: 'margin:0 4px 14px;font-size:13px' }, t('train_sub')));
     if (!Store.state.profiles.length) {
       view.appendChild(h('div', { class: 'card center' },
-        h('div', { class: 'sub', style: 'margin-bottom:10px' }, t('need_profile_train')),
-        h('button', { class: 'btn', onClick: () => App.editProfile(null, () => App.rerender()) }, '＋ ' + t('new_profile'))));
+        h('div', { class: 'sub', style: 'margin-bottom:12px' }, t('need_profile_train')),
+        h('button', { class: 'btn', onClick: () => App.editProfile(null, () => App.rerender()) }, '+ ' + t('new_profile'))));
       return;
     }
     const cur = trainProfile();
-    const chipRow = h('div', { style: 'margin-bottom:8px' });
+    const chipRow = h('div', { style: 'margin-bottom:8px;display:flex;flex-wrap:wrap' });
     Store.state.profiles.forEach(p => {
       chipRow.appendChild(h('span', {
         class: 'chip' + (cur && p.id === cur.id ? ' on' : ''),
         onClick: () => { Store.state.settings.trainProfile = p.id; Store.save(); App.rerender(); }
-      }, h('span', { class: 'av' }, p.emoji), p.name));
+      }, UI.avatar(p.name), p.name));
     });
     view.appendChild(chipRow);
     if (cur) {
       const streak = Store.trainStreak(cur);
-      if (streak > 0) view.appendChild(h('div', { class: 'sub', style: 'margin-bottom:10px' }, '🔥 ' + t('streak_days', { n: streak })));
+      if (streak > 0) view.appendChild(h('div', { class: 'sub', style: 'margin:0 4px 10px;color:var(--grn)' }, t('streak_days', { n: streak })));
     }
     TRAIN_DEFS.forEach(m => {
       const tr = cur && cur.trainings[m.id];
-      view.appendChild(h('div', { class: 'card tap', onClick: () => { if (cur) m.go(cur); } },
-        h('div', { class: 'row' },
-          h('div', { class: 'gic' }, UI.ic(m.icon)),
-          h('div', { class: 'grow' },
-            h('div', { style: 'font-weight:700;font-size:16px' }, t(m.name)),
-            h('div', { class: 'sub' }, t(m.desc))),
-          tr && tr.best !== null ? h('div', { class: 'center' },
-            h('div', { style: 'font-weight:800' }, tr.best),
-            h('div', { class: 'sub', style: 'font-size:10px' }, 'Best')) : null,
-          h('div', { class: 'arr' }, '›'))));
+      const last = tr && tr.series && tr.series.length ? tr.series[tr.series.length - 1].v : null;
+      view.appendChild(h('div', { class: 'mrow', onClick: () => { if (cur) m.go(cur); } },
+        h('span', { class: 'badge' }, m.badge),
+        h('span', { class: 'mtxt' },
+          h('span', { class: 'ttl', style: 'font-size:15px' }, t(m.name)),
+          h('span', { class: 'dsc' }, t(m.desc))),
+        tr && tr.best !== null
+          ? h('span', { class: 'meta' }, (last !== null && last !== tr.best ? t('last_lbl') + ': ' + last : 'Best: ' + tr.best))
+          : h('span', { class: 'chev' }, '›')));
     });
   }
 

@@ -23,8 +23,8 @@ const UI = (() => {
   function toast(msg, cls) {
     const el = h('div', { class: 'toast' + (cls ? ' ' + cls : '') }, msg);
     document.getElementById('toasts').appendChild(el);
-    setTimeout(() => { el.style.opacity = '0'; el.style.transition = 'opacity .3s'; }, 2600);
-    setTimeout(() => el.remove(), 3000);
+    setTimeout(() => { el.style.opacity = '0'; el.style.transition = 'opacity .3s'; }, 1800);
+    setTimeout(() => el.remove(), 2200);
   }
 
   function modal(opts) {
@@ -57,40 +57,37 @@ const UI = (() => {
     });
   }
 
-  /* ---------- Stroke-Icons (24er ViewBox, erben currentColor) ---------- */
+  /* ---------- Stroke-Icons (24er ViewBox, geometrisch, keine Emojis) ---------- */
   const ICONS = {
-    target: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/>',
-    bolt: '<path d="M13 3 5 14h6l-1 7 8-11h-6l1-7z"/>',
-    chart: '<path d="M5 20v-6M12 20V9M19 20V4"/>',
-    trophy: '<path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4z"/><path d="M7 6H4a3 3 0 0 0 3 4M17 6h3a3 3 0 0 1-3 4"/>',
-    menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',
-    back: '<path d="M14 6l-6 6 6 6"/>',
-    hash: '<path d="M5 9h14M5 15h14M11 4l-2 16M15 4l-2 16"/>',
-    clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
-    stack: '<path d="m12 4 8 4.5-8 4.5-8-4.5L12 4z"/><path d="m4 13.5 8 4.5 8-4.5"/>',
-    skull: '<path d="M12 3a7.5 7.5 0 0 1 7.5 7.5c0 2.4-1.2 4.1-3 5.2V19a2 2 0 0 1-2 2h-5a2 2 0 0 1-2-2v-3.3c-1.8-1.1-3-2.8-3-5.2A7.5 7.5 0 0 1 12 3z"/><circle cx="9.5" cy="11" r="1"/><circle cx="14.5" cy="11" r="1"/>',
-    divide: '<circle cx="12" cy="5.5" r="1"/><circle cx="12" cy="18.5" r="1"/><path d="M5 12h14"/>',
-    pause: '<path d="M9 5v14M15 5v14"/>',
-    rings: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5.5"/>',
-    focus: '<circle cx="12" cy="12" r="7"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/>',
-    flag: '<path d="M6 21V4"/><path d="M6 4h11l-2.5 3.5L17 11H6"/>',
-    ladder: '<path d="M8 3v18M16 3v18M8 8h8M8 13h8M8 18h8"/>',
-    flame: '<path d="M12 3c1 3 5 5 5 9.5a5 5 0 0 1-10 0C7 10 9 8.5 9.5 6.5c1 1 1.7 2 2 3.5C12.5 8 12 5 12 3z"/>',
-    shield: '<path d="M12 3l7 3v5.5c0 4.2-3 6.8-7 9.5-4-2.7-7-5.3-7-9.5V6l7-3z"/>',
-    award: '<circle cx="12" cy="9" r="5"/><path d="M9.5 13.5 7.5 21l4.5-2 4.5 2-2-7.5"/>',
-    catch: '<circle cx="12" cy="12" r="9"/><path d="M8.5 12.5l2.5 2.5 5-5.5"/>',
-    user: '<circle cx="12" cy="8" r="4"/><path d="M4 21c.7-4 4-6 8-6s7.3 2 8 6"/>',
-    users: '<circle cx="9" cy="8.5" r="3.5"/><path d="M3 20c.5-3.4 3-5 6-5s5.5 1.6 6 5"/><path d="M15.5 5.4a3.5 3.5 0 0 1 0 6.2M18 15.5c1.9.8 3 2.2 3.4 4.5"/>',
-    world: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.8 3.3 2.8 14.7 0 18M12 3c-2.8 3.3-2.8 14.7 0 18"/>',
-    sliders: '<path d="M6 4v3M6 13v7M12 4v7M12 17v3M18 4v9M18 19v1"/><circle cx="6" cy="10" r="2"/><circle cx="12" cy="14" r="2"/><circle cx="18" cy="16" r="2"/>',
-    save: '<path d="M12 4v10m0 0-3.5-3.5M12 14l3.5-3.5"/><path d="M4 17v1a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3v-1"/>',
-    info: '<circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11.2 12H12v4h.8"/>'
+    target: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none"/>',
+    crosshair: '<circle cx="12" cy="12" r="7"/><path d="M12 2v3"/><path d="M12 19v3"/><path d="M2 12h3"/><path d="M19 12h3"/>',
+    bars: '<path d="M5 20v-8"/><path d="M12 20V5"/><path d="M19 20v-5"/>',
+    bracket: '<path d="M4 6h5v4"/><path d="M4 18h5v-4"/><path d="M9 12h6"/><path d="M15 12h5"/>',
+    dots: '<circle cx="5" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.6" fill="currentColor" stroke="none"/>',
+    sliders: '<path d="M4 8h16"/><path d="M4 16h16"/><circle cx="9" cy="8" r="2.4" fill="var(--bg)"/><circle cx="15" cy="16" r="2.4" fill="var(--bg)"/>'
   };
 
   function ic(name) {
-    const t = document.createElement('div');
-    t.innerHTML = '<svg class="sic" viewBox="0 0 24 24" aria-hidden="true">' + (ICONS[name] || ICONS.target) + '</svg>';
-    return t.firstChild;
+    const el = document.createElement('div');
+    el.innerHTML = '<svg class="sic" viewBox="0 0 24 24" aria-hidden="true">' + (ICONS[name] || ICONS.target) + '</svg>';
+    return el.firstChild;
+  }
+
+  /* ---------- Initialen-Avatare ---------- */
+  function initials(name) {
+    return String(name || '?').trim().slice(0, 2).toUpperCase();
+  }
+  function avatar(name, size) {
+    return h('span', { class: 'avc' + (size ? ' s' + size : '') }, initials(name));
+  }
+
+  /* ---------- Dart-Anzeige-Label (S20 → „20", DB → „Bull") ---------- */
+  function dartLabel(key) {
+    if (!key || key === 'MISS') return '0';
+    if (key === 'SB') return '25';
+    if (key === 'DB') return 'Bull';
+    if (key[0] === 'S') return key.slice(1);
+    return key;
   }
 
   /* ---------- Dartboard SVG ---------- */
@@ -119,38 +116,35 @@ const UI = (() => {
       if (key) { p.setAttribute('data-key', key); p.classList.add('bseg'); }
       svg.appendChild(p); return p;
     };
-    // Hintergrund-Ring (Zahlenkranz)
     const bg = document.createElementNS(NS, 'circle');
-    bg.setAttribute('r', '117'); bg.setAttribute('fill', '#14171b');
+    bg.setAttribute('r', '117'); bg.setAttribute('fill', '#121a15');
     svg.appendChild(bg);
     const segEls = {};
     ORDER.forEach((n, i) => {
       const a0 = i * 18 - 9, a1 = i * 18 + 9;
       const dark = i % 2 === 0;
-      const sing = dark ? '#26292e' : '#e8dcc0';
-      const ring = dark ? '#d93a3a' : '#2fa35c';
+      const sing = dark ? '#24302a' : '#e9e2cf';
+      const ring = dark ? '#c9463c' : '#3f9464';
       segEls['S' + n + 'a'] = mk(sector(RAD.sb, RAD.tin, a0, a1), sing, 'S' + n);
       segEls['T' + n] = mk(sector(RAD.tin, RAD.tout, a0, a1), ring, 'T' + n);
       segEls['S' + n + 'b'] = mk(sector(RAD.tout, RAD.din, a0, a1), sing, 'S' + n);
       segEls['D' + n] = mk(sector(RAD.din, RAD.dout, a0, a1), ring, 'D' + n);
-      // Zahl außen
       const [tx, ty] = pt(108.5, i * 18);
       const txt = document.createElementNS(NS, 'text');
       txt.setAttribute('x', tx.toFixed(1)); txt.setAttribute('y', ty.toFixed(1));
-      txt.setAttribute('fill', '#cfd6dc'); txt.setAttribute('font-size', '12');
-      txt.setAttribute('font-weight', '700'); txt.setAttribute('text-anchor', 'middle');
+      txt.setAttribute('fill', '#cbd3cc'); txt.setAttribute('font-size', '12');
+      txt.setAttribute('font-weight', '600'); txt.setAttribute('text-anchor', 'middle');
       txt.setAttribute('dominant-baseline', 'central');
       txt.textContent = n;
       svg.appendChild(txt);
     });
-    // Bull
     const sb = document.createElementNS(NS, 'circle');
-    sb.setAttribute('r', RAD.sb); sb.setAttribute('fill', '#2fa35c');
+    sb.setAttribute('r', RAD.sb); sb.setAttribute('fill', '#3f9464');
     sb.setAttribute('stroke', '#0b0d0f'); sb.setAttribute('stroke-width', '0.55');
     sb.setAttribute('data-key', 'SB'); sb.classList.add('bseg');
     svg.appendChild(sb); segEls['SB'] = sb;
     const db = document.createElementNS(NS, 'circle');
-    db.setAttribute('r', RAD.db); db.setAttribute('fill', '#d93a3a');
+    db.setAttribute('r', RAD.db); db.setAttribute('fill', '#c9463c');
     db.setAttribute('stroke', '#0b0d0f'); db.setAttribute('stroke-width', '0.55');
     db.setAttribute('data-key', 'DB'); db.classList.add('bseg');
     svg.appendChild(db); segEls['DB'] = db;
@@ -165,9 +159,6 @@ const UI = (() => {
         if (!key) return;
         opts.onHit(DartMath.fromKey(key));
       });
-      wrap.appendChild(h('div', { class: 'boardbtns' },
-        h('button', { class: 'iconbtn', style: 'flex:1', onClick: () => opts.onHit(DartMath.MISS()) }, '✗ ' + t('miss'))
-      ));
     }
 
     if (opts.heat) {
@@ -182,10 +173,29 @@ const UI = (() => {
     return wrap;
   }
   function mixHeat(a) {
-    // von dunkel nach gold-orange
-    const c1 = [40, 46, 54], c2 = [244, 180, 40];
+    // von dunkel nach warmgrün
+    const c1 = [36, 48, 42], c2 = [126, 200, 150];
     const c = c1.map((v, i) => Math.round(v + (c2[i] - v) * a));
     return `rgb(${c[0]},${c[1]},${c[2]})`;
+  }
+
+  /* ---------- Balken-Chart (Formkurve) ---------- */
+  function barsChart(values, opts = {}) {
+    const wrap = h('div', { class: 'fbars' });
+    if (!values.length) {
+      wrap.appendChild(h('span', { style: 'height:6px' }));
+      return wrap;
+    }
+    const min = Math.min(...values), max = Math.max(...values);
+    values.forEach((v, i) => {
+      const p = max - min < 0.001 ? 0.7 : (v - min) / (max - min);
+      const px = Math.round(22 + p * 50);
+      wrap.appendChild(h('span', {
+        class: i === values.length - 1 && opts.hiLast !== false ? 'hi' : '',
+        style: 'height:' + px + 'px'
+      }));
+    });
+    return wrap;
   }
 
   /* ---------- Mini-Liniendiagramm ---------- */
@@ -199,7 +209,7 @@ const UI = (() => {
     if (!all.length) {
       const txt = document.createElementNS(NS, 'text');
       txt.setAttribute('x', w / 2); txt.setAttribute('y', hh / 2);
-      txt.setAttribute('fill', 'var(--muted)'); txt.setAttribute('text-anchor', 'middle');
+      txt.setAttribute('fill', 'var(--mut2)'); txt.setAttribute('text-anchor', 'middle');
       txt.setAttribute('font-size', '12');
       txt.textContent = t('no_data');
       svg.appendChild(txt);
@@ -208,19 +218,18 @@ const UI = (() => {
     let ymin = opts.ymin !== undefined ? opts.ymin : Math.min(...all);
     let ymax = opts.ymax !== undefined ? opts.ymax : Math.max(...all);
     if (ymax - ymin < 4) { ymax += 2; ymin = Math.max(0, ymin - 2); }
-    const colors = opts.colors || ['var(--green)', 'var(--red)', 'var(--gold)'];
-    // Gitterlinien
+    const colors = opts.colors || ['var(--grn)', 'var(--red)', 'var(--gold)'];
     for (let i = 0; i <= 2; i++) {
       const y = pad / 2 + (hh - pad) * i / 2;
       const val = ymax - (ymax - ymin) * i / 2;
       const ln = document.createElementNS(NS, 'line');
       ln.setAttribute('x1', pad); ln.setAttribute('x2', w - 4);
       ln.setAttribute('y1', y); ln.setAttribute('y2', y);
-      ln.setAttribute('stroke', 'var(--line)'); ln.setAttribute('stroke-width', '0.6');
+      ln.setAttribute('stroke', 'var(--ln)'); ln.setAttribute('stroke-width', '0.6');
       svg.appendChild(ln);
       const txt = document.createElementNS(NS, 'text');
       txt.setAttribute('x', pad - 4); txt.setAttribute('y', y + 3.5);
-      txt.setAttribute('fill', 'var(--muted)'); txt.setAttribute('font-size', '9');
+      txt.setAttribute('fill', 'var(--mut2)'); txt.setAttribute('font-size', '9');
       txt.setAttribute('text-anchor', 'end');
       txt.textContent = Math.round(val * 10) / 10;
       svg.appendChild(txt);
@@ -311,10 +320,14 @@ const UI = (() => {
     if (document.visibilityState === 'visible' && lock) wakeLock(true);
   });
 
-  const f1 = x => (Math.round(x * 10) / 10).toFixed(1);
+  /* ---------- Format-Helfer ---------- */
+  function f1(x) {
+    const s = (Math.round(x * 10) / 10).toFixed(1);
+    return (typeof Store !== 'undefined' && Store.state.settings.lang === 'de') ? s.replace('.', ',') : s;
+  }
   const dstr = ts => new Date(ts).toLocaleDateString(Store.state.settings.lang === 'de' ? 'de-DE' : 'en-GB', { day: '2-digit', month: '2-digit', year: '2-digit' });
 
-  return { toast, modal, confirm, boardSVG, lineChart, sfx, say, callScore, buzz, wakeLock, f1, dstr, ic };
+  return { toast, modal, confirm, boardSVG, barsChart, lineChart, sfx, say, callScore, buzz, wakeLock, f1, dstr, ic, initials, avatar, dartLabel };
 })();
 
 /* ---------- Dart-Mathematik ---------- */
@@ -360,6 +373,7 @@ const DartMath = (() => {
   function checkout(score, darts, out) {
     out = out || 'double';
     if (score < 1) return null;
+    if (out !== 'straight' && score > 170) return null;
     function solve(s, n) {
       const f = finKey(s, out);
       if (f) return [f];

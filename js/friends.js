@@ -6,7 +6,7 @@ const Friends = (() => {
   function makeSnapshot(p) {
     const a = p.agg;
     return {
-      v: 1, n: p.name, e: p.emoji, ts: Date.now(),
+      v: 1, n: p.name, ts: Date.now(),
       agg: {
         matches: a.matches, wins: a.wins,
         avg: Math.round(Store.avgOf(a) * 10) / 10,
@@ -45,7 +45,7 @@ const Friends = (() => {
     }
     try {
       await navigator.clipboard.writeText(code);
-      UI.toast('📋 ' + t('copied'));
+      UI.toast(t('copied'));
     } catch (e) {
       UI.modal({ title: t('my_code'), body: h('code', { class: 'sharecode' }, code), buttons: [{ label: t('ok') }] });
     }
@@ -53,16 +53,10 @@ const Friends = (() => {
 
   function compareScreen(f) {
     App.show(view => {
-      view.appendChild(h('div', { class: 'mhead' },
-        h('button', { class: 'iconbtn', onClick: () => App.back() }, '‹'),
-        h('div', { class: 'ttl' }, (f.e || '👤') + ' ' + f.n,
-          h('div', { class: 'sub2' }, t('friend_since') + ' ' + UI.dstr(f.ts))),
-        h('button', {
-          class: 'iconbtn', onClick: () => UI.confirm(t('remove_friend_q'), () => {
-            Store.state.friends = Store.state.friends.filter(x => x !== f);
-            Store.save(); App.back();
-          })
-        }, '🗑')));
+      view.appendChild(h('div', { class: 'shead' },
+        h('button', { class: 'cbtn', onClick: () => App.back() }, '‹'),
+        h('div', { class: 'ttl' }, f.n,
+          h('div', { class: 'sub2' }, t('friend_since') + ' ' + UI.dstr(f.ts)))));
       const me = Store.profile(Store.state.settings.statsProfile) || Store.state.profiles[0];
       if (!me) { view.appendChild(h('div', { class: 'sub center' }, t('need_profile_stats'))); return; }
       const myAgg = me.agg;
@@ -78,27 +72,34 @@ const Friends = (() => {
           f.agg.matches ? Math.round((f.agg.wins / f.agg.matches) * 100) + '%' : '–']
       ];
       const tb = h('table', { class: 'tbl' },
-        h('tr', null, h('th', null, ''), h('th', null, me.emoji + ' ' + me.name), h('th', null, (f.e || '👤') + ' ' + f.n)));
+        h('tr', null, h('th', null, ''), h('th', null, me.name), h('th', null, f.n)));
       rows.forEach(r => tb.appendChild(h('tr', null,
         h('td', { class: 'sub' }, r[0]), h('td', null, String(r[1])), h('td', null, String(r[2])))));
-      view.appendChild(h('div', { class: 'card' }, tb));
+      view.appendChild(h('div', { class: 'card', style: 'margin-top:8px' }, tb));
       const mySeries = me.history.filter(x => x.avg).map(x => x.avg).slice(-15);
       view.appendChild(h('div', { class: 'card' },
         h('div', { class: 'sub', style: 'margin-bottom:6px' },
-          t('form_curve') + ' – ', h('span', { style: 'color:var(--green)' }, me.name), ' / ',
+          t('form_curve') + ' – ', h('span', { style: 'color:var(--grn)' }, me.name), ' / ',
           h('span', { style: 'color:var(--red)' }, f.n)),
         UI.lineChart([{ values: mySeries }, { values: f.series || [] }])));
+      view.appendChild(h('button', {
+        class: 'btn sec', style: 'margin-top:14px;height:46px;font-size:14px',
+        onClick: () => UI.confirm(t('remove_friend_q'), () => {
+          Store.state.friends = Store.state.friends.filter(x => x !== f);
+          Store.save(); App.back();
+        })
+      }, t('remove_friend')));
     });
   }
 
   function screen() {
     App.show(view => {
-      view.appendChild(h('div', { class: 'mhead' },
-        h('button', { class: 'iconbtn', onClick: () => App.back() }, '‹'),
-        h('div', { class: 'ttl' }, '👥 ' + t('friends'))));
+      view.appendChild(h('div', { class: 'shead' },
+        h('button', { class: 'cbtn', onClick: () => App.back() }, '‹'),
+        h('div', { class: 'ttl' }, t('friends'))));
 
       /* Mein Code */
-      view.appendChild(h('h2', null, t('my_code')));
+      view.appendChild(h('div', { class: 'mlabel', style: 'margin-top:6px' }, t('my_code')));
       const card = h('div', { class: 'card' });
       view.appendChild(card);
       if (!Store.state.profiles.length) {
@@ -106,7 +107,7 @@ const Friends = (() => {
       } else {
         let selId = Store.state.settings.statsProfile || Store.state.profiles[0].id;
         const codeEl = h('code', { class: 'sharecode' });
-        const chips = h('div');
+        const chips = h('div', { style: 'display:flex;flex-wrap:wrap' });
         const upd = () => {
           const p = Store.profile(selId) || Store.state.profiles[0];
           codeEl.textContent = encode(p);
@@ -114,68 +115,67 @@ const Friends = (() => {
         };
         Store.state.profiles.forEach(p => {
           chips.appendChild(h('span', { class: 'chip', 'data-id': p.id, onClick: () => { selId = p.id; upd(); } },
-            h('span', { class: 'av' }, p.emoji), p.name));
+            UI.avatar(p.name), p.name));
         });
         card.append(chips, codeEl,
-          h('div', { class: 'row' },
+          h('div', { class: 'row', style: 'margin-top:4px' },
             h('button', {
               class: 'btn sec small', style: 'flex:1',
-              onClick: () => { navigator.clipboard && navigator.clipboard.writeText(codeEl.textContent).then(() => UI.toast('📋 ' + t('copied'))); }
-            }, '📋 ' + t('copy')),
-            h('button', { class: 'btn small', style: 'flex:1', onClick: () => shareCode(codeEl.textContent) }, '📤 ' + t('share'))));
+              onClick: () => { navigator.clipboard && navigator.clipboard.writeText(codeEl.textContent).then(() => UI.toast(t('copied'))); }
+            }, t('copy')),
+            h('button', { class: 'btn small', style: 'flex:1', onClick: () => shareCode(codeEl.textContent) }, t('share'))));
         upd();
       }
 
       /* Import */
-      view.appendChild(h('h2', null, t('add_friend')));
+      view.appendChild(h('div', { class: 'mlabel' }, t('add_friend')));
       const inp = h('input', { type: 'text', placeholder: 'ONE80.…' });
       view.appendChild(h('div', { class: 'card' },
         h('label', { class: 'fld' }, t('paste_code'), inp),
         h('button', {
-          class: 'btn', onClick: () => {
+          class: 'btn', style: 'height:46px;font-size:14px', onClick: () => {
             try {
               const snap = importCode(inp.value);
-              UI.toast('✓ ' + snap.n + ' ' + t('friend_added'));
+              UI.toast(snap.n + ' ' + t('friend_added'));
               App.rerender();
-            } catch (e) { UI.toast('✗ ' + t('invalid_code')); }
+            } catch (e) { UI.toast(t('invalid_code')); }
           }
-        }, '＋ ' + t('import'))));
+        }, t('import'))));
 
       /* Rangliste (Profile + Freunde) */
       const entries = [];
       Store.state.profiles.forEach(p => entries.push({
-        n: p.name, e: p.emoji, avg: Math.round(Store.avgOf(p.agg) * 10) / 10, n180: p.agg.n180, hi: p.agg.hiFinish, me: true
+        n: p.name, avg: Math.round(Store.avgOf(p.agg) * 10) / 10, n180: p.agg.n180, hi: p.agg.hiFinish, me: true
       }));
-      Store.state.friends.forEach(f => entries.push({ n: f.n, e: f.e || '👤', avg: f.agg.avg, n180: f.agg.n180, hi: f.agg.hi, me: false }));
+      Store.state.friends.forEach(f => entries.push({ n: f.n, avg: f.agg.avg, n180: f.agg.n180, hi: f.agg.hi, me: false }));
       if (entries.length > 1) {
         entries.sort((a, b) => b.avg - a.avg);
-        view.appendChild(h('h2', null, '🏆 ' + t('leaderboard')));
+        view.appendChild(h('div', { class: 'mlabel' }, t('leaderboard')));
         const tb = h('table', { class: 'tbl' },
           h('tr', null, h('th', null, '#'), h('th', null, ''), h('th', null, 'Ø'), h('th', null, '180'), h('th', null, 'HiFin')));
         entries.forEach((x, i) => {
           tb.appendChild(h('tr', null,
             h('td', null, String(i + 1)),
-            h('td', { style: x.me ? 'font-weight:700' : '' }, x.e + ' ' + x.n),
+            h('td', { style: x.me ? 'font-weight:700' : '' }, x.n),
             h('td', null, String(x.avg)), h('td', null, String(x.n180)), h('td', null, String(x.hi || '–'))));
         });
         view.appendChild(h('div', { class: 'card' }, tb));
       }
 
       /* Freundesliste */
-      view.appendChild(h('h2', null, t('friends')));
+      view.appendChild(h('div', { class: 'mlabel' }, t('friends')));
       if (!Store.state.friends.length) {
         view.appendChild(h('div', { class: 'card center sub' }, t('no_friends')));
       } else {
-        const list = h('div', { class: 'card' });
         Store.state.friends.forEach(f => {
-          list.appendChild(h('div', { class: 'listitem', onClick: () => compareScreen(f) },
-            h('div', { class: 'ic' }, f.e || '👤'),
-            h('div', { class: 'grow' },
-              h('div', { style: 'font-weight:700' }, f.n),
-              h('div', { class: 'sub' }, 'Ø ' + f.agg.avg + ' · CO ' + (f.agg.co || 0) + '% · ' + t('updated') + ' ' + UI.dstr(f.ts))),
-            h('div', { class: 'arr' }, '›')));
+          view.appendChild(h('div', { class: 'rrow', onClick: () => compareScreen(f) },
+            h('div', { class: 'row', style: 'min-width:0' },
+              UI.avatar(f.n, 34),
+              h('span', { class: 'rtxt' },
+                h('span', { class: 'ttl' }, f.n),
+                h('span', { class: 'dsc' }, 'Ø ' + f.agg.avg + ' · CO ' + (f.agg.co || 0) + '% · ' + t('updated') + ' ' + UI.dstr(f.ts)))),
+            h('span', { class: 'chev' }, '›')));
         });
-        view.appendChild(list);
       }
     });
   }

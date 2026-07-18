@@ -5,8 +5,8 @@ const Store = (() => {
   const defaults = () => ({
     settings: {
       theme: 'dark', lang: 'de', caller: true, sfx: true, vibrate: true,
-      input: 'board',
-      x01: { start: 501, out: 'double', din: false, legs: 3, sets: 1 }
+      input: 'board', coHints: true,
+      x01: { start: 501, out: 'double', din: false, legs: 5, sets: 1 }
     },
     profiles: [],
     matches: [],       // Match-Historie (Zusammenfassungen)
@@ -48,9 +48,9 @@ const Store = (() => {
     };
   }
 
-  function newProfile(name, emoji, color) {
+  function newProfile(name) {
     const p = {
-      id: uid(), name, emoji: emoji || '🎯', color: color || '#e24b4b',
+      id: uid(), name,
       created: Date.now(),
       agg: emptyAgg(),
       trainings: {},        // {mode: {best, series: [{d: date, v: val}]}}

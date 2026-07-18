@@ -7,13 +7,13 @@ const Input = (() => {
     let mod = 1; // 1 = Single, 2 = Double, 3 = Triple (Tastenfeld)
     let disabled = false;
 
-    const wrap = h('div', { class: 'inpwrap' });
+    const wrap = h('div', { class: 'kwrap' });
     const bar = h('div', { class: 'inpbar' });
-    const area = h('div');
+    const area = h('div', { style: 'display:flex;flex-direction:column;gap:10px' });
     wrap.appendChild(bar); wrap.appendChild(area);
     host.appendChild(wrap);
 
-    const modeLabel = { board: '🎯 ' + t('inp_board'), keys: '🔢 ' + t('inp_keys'), sum: 'Σ ' + t('inp_sum') };
+    const modeLabel = { board: t('inp_board'), keys: t('inp_keys'), sum: t('inp_sum') };
 
     function renderBar() {
       bar.innerHTML = '';
@@ -27,7 +27,6 @@ const Input = (() => {
         });
         bar.appendChild(seg);
       }
-      bar.appendChild(h('button', { class: 'iconbtn', onClick: () => { if (!disabled && opts.onUndo) opts.onUndo(); } }, '↶ ' + t('undo')));
     }
 
     function emitDart(d) {
@@ -35,51 +34,63 @@ const Input = (() => {
       UI.buzz(20); UI.sfx.hit();
       opts.onDart(d);
     }
+    function undo() { if (!disabled && opts.onUndo) opts.onUndo(); }
 
     function renderBoard() {
-      area.innerHTML = '';
       area.appendChild(UI.boardSVG({ onHit: d => emitDart(d) }));
+      area.appendChild(h('div', { class: 'boardbtns' },
+        h('button', { class: 'btn sec', onClick: () => emitDart(DartMath.MISS()) }, t('miss')),
+        h('button', { class: 'btn sec', onClick: undo }, '⌫ ' + t('undo'))
+      ));
     }
 
+    /* Tastenfeld im Club-Stil: Modifier-Segmente + Kreis-Tasten */
     function renderKeys() {
-      area.innerHTML = '';
-      const pad = h('div', { class: 'keypad' });
-      const modBtns = {};
+      const seg = h('div', { class: 'seg' });
+      const segBtns = [];
       const setMod = m => {
-        mod = (mod === m) ? 1 : m;
-        modBtns[2].classList.toggle('on', mod === 2);
-        modBtns[3].classList.toggle('on', mod === 3);
+        mod = m;
+        segBtns.forEach((b, i) => b.classList.toggle('on', i + 1 === mod));
       };
-      modBtns[2] = h('button', { class: 'mod wide', onClick: () => setMod(2) }, 'DOUBLE');
-      modBtns[3] = h('button', { class: 'mod wide', onClick: () => setMod(3) }, 'TRIPLE');
-      pad.appendChild(modBtns[2]);
-      pad.appendChild(modBtns[3]);
-      pad.appendChild(h('button', { class: 'danger', onClick: () => { if (!disabled) emitDart(DartMath.MISS()); } }, '✗'));
+      ['Single', 'Double', 'Triple'].forEach((lbl, i) => {
+        const b = h('button', { class: i === 0 ? 'on' : '', onClick: () => setMod(i + 1) }, lbl);
+        segBtns.push(b); seg.appendChild(b);
+      });
+      area.appendChild(seg);
+
+      const grid = h('div', { class: 'kgrid' });
       for (let n = 1; n <= 20; n++) {
-        pad.appendChild(h('button', {
+        grid.appendChild(h('button', {
+          class: 'key',
           onClick: () => {
             const key = (mod === 3 ? 'T' : mod === 2 ? 'D' : 'S') + n;
-            emitDart(DartMath.fromKey(key)); setModReset();
+            emitDart(DartMath.fromKey(key));
+            setMod(1);
           }
         }, String(n)));
       }
-      pad.appendChild(h('button', {
-        class: 'wide',
-        onClick: () => { emitDart(DartMath.fromKey(mod === 2 ? 'DB' : 'SB')); setModReset(); }
-      }, mod === 2 ? 'BULL 50' : '25 / BULL'));
-      const setModReset = () => { mod = 1; modBtns[2].classList.remove('on'); modBtns[3].classList.remove('on'); renderBullLabel(); };
-      const renderBullLabel = () => { pad.lastChild.textContent = mod === 2 ? 'BULL 50' : '25 / BULL'; };
-      modBtns[2].addEventListener('click', renderBullLabel);
-      modBtns[3].addEventListener('click', renderBullLabel);
-      area.appendChild(pad);
+      area.appendChild(grid);
+
+      area.appendChild(h('div', { class: 'krow' },
+        h('button', {
+          class: 'key', style: 'font-size:15px',
+          onClick: () => {
+            if (mod === 3) { UI.toast(t('no_t25')); return; }
+            emitDart(DartMath.fromKey(mod === 2 ? 'DB' : 'SB'));
+            setMod(1);
+          }
+        }, '25'),
+        h('button', { class: 'key bull', onClick: () => { emitDart(DartMath.fromKey('DB')); setMod(1); } }, 'Bull'),
+        h('button', { class: 'key ghost', onClick: () => { emitDart(DartMath.MISS()); setMod(1); } }, 'Miss'),
+        h('button', { class: 'key ghost', style: 'font-size:16px', onClick: undo }, '⌫')
+      ));
     }
 
     function renderSum() {
-      area.innerHTML = '';
       let val = '';
       const pad = h('div', { class: 'sumpad' });
-      const disp = h('div', { class: 'disp' }, ' ');
-      const upd = () => { disp.textContent = val || ' '; };
+      const disp = h('div', { class: 'disp' }, ' ');
+      const upd = () => { disp.textContent = val || ' '; };
       const submit = total => {
         if (disabled) return;
         if (!DartMath.validVisitTotal(total)) { UI.toast(t('invalid_score')); return; }
@@ -106,6 +117,8 @@ const Input = (() => {
 
     function render() {
       renderBar();
+      area.innerHTML = '';
+      mod = 1;
       if (mode === 'board') renderBoard();
       else if (mode === 'keys') renderKeys();
       else renderSum();

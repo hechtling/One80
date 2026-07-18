@@ -33,7 +33,7 @@ jobs:
       - name: Web-App nach www kopieren
         run: |
           mkdir -p www
-          cp -r index.html manifest.json sw.js css js icons www/
+          cp -r index.html manifest.json sw.js css js icons fonts www/
 
       - name: Android-Plattform erzeugen
         run: npx cap add android
@@ -41,10 +41,10 @@ jobs:
       - name: App-Icons und Splashscreen generieren
         run: >
           npx @capacitor/assets generate --android
-          --iconBackgroundColor '#10161c'
-          --iconBackgroundColorDark '#10161c'
-          --splashBackgroundColor '#10161c'
-          --splashBackgroundColorDark '#10161c'
+          --iconBackgroundColor '#0F1D16'
+          --iconBackgroundColorDark '#0F1D16'
+          --splashBackgroundColor '#0F1D16'
+          --splashBackgroundColorDark '#0F1D16'
 
       - name: Capacitor synchronisieren
         run: npx cap sync android

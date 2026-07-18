@@ -70,7 +70,7 @@ const Tour = (() => {
   function createTournament(name, mode, players, x01) {
     const tn = {
       id: Store.uid(), name, mode, created: Date.now(),
-      players: players.map(p => ({ name: p.name, profileId: p.profileId || null, emoji: p.emoji || '👤' })),
+      players: players.map(p => ({ name: p.name, profileId: p.profileId || null })),
       x01, status: 'run', winnerIdx: null
     };
     const idxs = shuffle(players.map((_, i) => i));
@@ -95,7 +95,7 @@ const Tour = (() => {
     tn.winnerIdx = wIdx;
     const w = tn.players[wIdx];
     UI.sfx.win();
-    UI.toast('🏆 ' + pname(tn, wIdx) + ' ' + t('tour_won'), 'gold');
+    UI.toast(pname(tn, wIdx) + ' ' + t('tour_won'), 'gold');
     if (w.profileId) Stats.recordTourWin(w.profileId);
     Store.save();
   }
@@ -111,7 +111,7 @@ const Tour = (() => {
       const wIdx = res.winnerIdx === 0 ? a : b;
       onResult(wIdx, res.legs);
       Store.save();
-      App.back(2); // Match + Zusammenfassung schließen → Turnieransicht
+      App.back(); // Match schließen → Turnieransicht
     });
   }
 
@@ -119,22 +119,15 @@ const Tour = (() => {
   function detailScreen(tn) {
     App.show(view => {
       const modeLbl = { ko: 'KO', rr: t('t_league'), gko: t('t_groups') }[tn.mode];
-      view.appendChild(h('div', { class: 'mhead' },
-        h('button', { class: 'iconbtn', onClick: () => App.back() }, '‹'),
-        h('div', { class: 'ttl' }, '🏆 ' + tn.name,
-          h('div', { class: 'sub2' }, modeLbl + ' · ' + tn.players.length + ' ' + t('players') + ' · ' + tn.x01.start + ', Best of ' + tn.x01.legs + ' Legs')),
-        h('button', {
-          class: 'iconbtn', onClick: () => UI.confirm(t('del_tour_q'), () => {
-            Store.state.tournaments = Store.state.tournaments.filter(x => x.id !== tn.id);
-            Store.save(); App.back();
-          })
-        }, '🗑')));
+      view.appendChild(h('div', { class: 'shead' },
+        h('button', { class: 'cbtn', onClick: () => App.back() }, '‹'),
+        h('div', { class: 'ttl' }, tn.name,
+          h('div', { class: 'sub2' }, modeLbl + ' · ' + tn.players.length + ' ' + t('players') + ' · ' + tn.x01.start + ', Best of ' + tn.x01.legs))));
 
       if (tn.status === 'done') {
-        view.appendChild(h('div', { class: 'hero center' },
-          h('div', { style: 'font-size:40px' }, '🏆'),
-          h('div', { class: 'big' }, pname(tn, tn.winnerIdx)),
-          h('div', { class: 'sub' }, t('tour_won'))));
+        view.appendChild(h('div', { class: 'hero center', style: 'margin-top:6px' },
+          h('div', { class: 'micro', style: 'color:var(--grn)' }, t('tour_champion')),
+          h('div', { class: 'big', style: 'margin-top:4px' }, pname(tn, tn.winnerIdx))));
       }
 
       const matchCard = (m, a, b, playable, onPlay, isFirstRound) => {
@@ -151,7 +144,7 @@ const Tour = (() => {
           h('div', { class: 'bp' + (done ? (m.winner === b ? ' w' : ' l') : '') },
             h('span', null, lbl(b)),
             h('span', null, done ? String(m.legs[1]) : '')),
-          playable ? h('div', { class: 'sub', style: 'font-size:11px' }, '▶ ' + t('play_match')) : null);
+          playable ? h('div', { style: 'font-size:11px;font-weight:600;color:var(--grn);margin-top:2px' }, t('play_match')) : null);
       };
 
       function renderKO(rounds, container, onWin) {
@@ -184,7 +177,7 @@ const Tour = (() => {
             h('td', null, String(r.pl)), h('td', { style: 'font-weight:700' }, String(r.w)),
             h('td', null, String(r.lf - r.la)), h('td', null, r.lf + ':' + r.la)));
         });
-        container.appendChild(h('div', { class: 'card', style: 'padding:8px' }, tb));
+        container.appendChild(h('div', { class: 'card', style: 'padding:8px 12px' }, tb));
         return rows;
       }
 
@@ -192,7 +185,7 @@ const Tour = (() => {
         renderKO(tn.rounds, view, wIdx => finishTournament(tn, wIdx));
       } else if (tn.mode === 'rr') {
         renderTable(tn.players.map((_, i) => i), tn.matches, view);
-        view.appendChild(h('h2', null, t('matches')));
+        view.appendChild(h('div', { class: 'mlabel' }, t('matches')));
         tn.matches.forEach(m => {
           const playable = tn.status === 'run' && m.winner === null;
           view.appendChild(matchCard(m, m.a, m.b, playable, () => {
@@ -208,7 +201,7 @@ const Tour = (() => {
         });
       } else { /* Gruppen + KO */
         tn.groups.forEach((g, gi) => {
-          view.appendChild(h('h2', null, t('group') + ' ' + String.fromCharCode(65 + gi)));
+          view.appendChild(h('div', { class: 'mlabel' }, t('group') + ' ' + String.fromCharCode(65 + gi)));
           const gm = tn.gMatches.filter(m => m.g === gi);
           renderTable(g, gm, view);
           gm.forEach(m => {
@@ -227,119 +220,83 @@ const Tour = (() => {
           });
         });
         if (tn.koRounds) {
-          view.appendChild(h('h2', null, t('ko_phase')));
+          view.appendChild(h('div', { class: 'mlabel' }, t('ko_phase')));
           renderKO(tn.koRounds, view, wIdx => finishTournament(tn, wIdx));
         } else {
           view.appendChild(h('div', { class: 'sub center', style: 'margin-top:10px' }, t('gko_hint')));
         }
       }
+
+      view.appendChild(h('button', {
+        class: 'btn sec', style: 'margin-top:18px;height:46px;font-size:14px',
+        onClick: () => UI.confirm(t('del_tour_q'), () => {
+          Store.state.tournaments = Store.state.tournaments.filter(x => x.id !== tn.id);
+          Store.save(); App.back();
+        })
+      }, t('del_tour')));
     });
   }
 
   /* ---------- Erstellen ---------- */
   function createScreen() {
     App.show(view => {
-      view.appendChild(h('div', { class: 'mhead' },
-        h('button', { class: 'iconbtn', onClick: () => App.back() }, '‹'),
-        h('div', { class: 'ttl' }, '＋ ' + t('new_tour'))));
+      view.appendChild(h('div', { class: 'shead' },
+        h('button', { class: 'cbtn', onClick: () => App.back() }, '‹'),
+        h('div', { class: 'ttl' }, t('new_tour'))));
       const nameInp = h('input', { type: 'text', value: t('tour_default_name') + ' ' + new Date().toLocaleDateString() });
-      view.appendChild(h('div', { class: 'card' }, h('label', { class: 'fld' }, t('tour_name'), nameInp)));
-      view.appendChild(h('h2', null, t('players')));
-      const pickHost = h('div', { class: 'card' });
+      view.appendChild(h('div', { class: 'mlabel', style: 'margin-top:6px' }, t('tour_name')));
+      view.appendChild(nameInp);
+      const pLabel = h('div', { class: 'mlabel' }, t('players'));
+      view.appendChild(pLabel);
+      const pickHost = h('div');
       view.appendChild(pickHost);
-      const picker = pickerNoBots(pickHost);
+      const picker = Games.playerPicker(pickHost, {
+        bot: false, max: 16,
+        onChange: n => { pLabel.textContent = t('players_of', { a: n, b: 16 }); }
+      });
       let mode = 'ko', start = 501, legs = 3;
-      const segBtns = (vals, labels, get, set) => {
-        const seg = h('div', { class: 'seg' });
-        vals.forEach((v, i) => {
-          seg.appendChild(h('button', {
-            class: v === get() ? 'on' : '',
-            onClick: () => { set(v); [...seg.children].forEach((c, j) => c.classList.toggle('on', vals[j] === get())); }
-          }, labels[i]));
-        });
-        return seg;
-      };
-      view.appendChild(h('div', { class: 'card' },
-        h('label', { class: 'fld' }, t('mode'), segBtns(['ko', 'rr', 'gko'], ['KO', t('t_league'), t('t_groups')], () => mode, v => mode = v)),
-        h('label', { class: 'fld' }, t('start_score'), segBtns([301, 501], ['301', '501'], () => start, v => start = v)),
-        h('label', { class: 'fld' }, 'Legs', segBtns([1, 3, 5], ['Best of 1', 'Best of 3', 'Best of 5'], () => legs, v => legs = v))));
+      view.appendChild(h('div', { class: 'mlabel' }, t('mode')));
+      view.appendChild(Games.segPick(['ko', 'rr', 'gko'], ['KO', t('t_league'), t('t_groups')], mode, v => mode = v));
+      view.appendChild(h('div', { class: 'mlabel' }, t('points_lbl')));
+      view.appendChild(Games.segPick([301, 501], ['301', '501'], start, v => start = v));
+      view.appendChild(h('div', { class: 'mlabel' }, 'Legs'));
+      view.appendChild(Games.segPick([1, 3, 5], ['Best of 1', 'Best of 3', 'Best of 5'], legs, v => legs = v));
       view.appendChild(h('button', {
-        class: 'btn', onClick: () => {
+        class: 'btn', style: 'margin-top:22px', onClick: () => {
           const players = picker.players();
           const min = mode === 'gko' ? 4 : 2;
           if (players.length < min) { UI.toast(t('need_players', { n: min })); return; }
-          const tour = createTournament(nameInp.value.trim() || 'Turnier', mode, players, { start, legs });
+          const tour = createTournament(nameInp.value.trim() || t('tour_default_name'), mode, players, { start, legs });
           App.back();
           detailScreen(tour);
         }
-      }, '▶ ' + t('create_tour')));
+      }, t('create_tour')));
     });
-  }
-
-  function pickerNoBots(host) {
-    const sel = [];
-    const wrap = h('div');
-    host.appendChild(wrap);
-    function names() {
-      return sel.map(s => {
-        if (s.type === 'profile') { const p = Store.profile(s.id); return { name: p.name, profileId: p.id, emoji: p.emoji }; }
-        return { name: s.name, emoji: '👤' };
-      });
-    }
-    function render() {
-      wrap.innerHTML = '';
-      const row = h('div');
-      sel.forEach((s, i) => {
-        const nm = names()[i];
-        row.appendChild(h('span', { class: 'chip on', onClick: () => { sel.splice(i, 1); render(); } },
-          h('span', { class: 'av' }, nm.emoji), nm.name + ' ✕'));
-      });
-      wrap.appendChild(row);
-      const av = h('div', { style: 'margin-top:6px' });
-      Store.state.profiles.forEach(p => {
-        if (sel.some(s => s.type === 'profile' && s.id === p.id)) return;
-        av.appendChild(h('span', {
-          class: 'chip', onClick: () => { if (sel.length < 16) { sel.push({ type: 'profile', id: p.id }); render(); } }
-        }, h('span', { class: 'av' }, p.emoji), p.name));
-      });
-      av.appendChild(h('span', {
-        class: 'chip', onClick: () => {
-          const inp = h('input', { type: 'text', placeholder: t('guest_name') });
-          UI.modal({
-            title: '+ ' + t('guest'), body: inp,
-            buttons: [
-              { label: t('cancel'), cls: 'sec' },
-              { label: t('ok'), onClick: () => { const n = inp.value.trim(); if (n) { sel.push({ type: 'guest', name: n }); render(); } } }
-            ]
-          });
-          setTimeout(() => inp.focus(), 50);
-        }
-      }, '＋ ' + t('guest')));
-      wrap.appendChild(av);
-    }
-    render();
-    return { players: names };
   }
 
   /* ---------- Tab ---------- */
   function renderTab(view) {
-    view.appendChild(h('h1', null, t('nav_tour'), h('span', { class: 'dot' }, '.')));
-    view.appendChild(h('button', { class: 'btn', style: 'margin-bottom:14px', onClick: createScreen }, '＋ ' + t('new_tour')));
+    view.appendChild(h('h1', null, t('nav_tour')));
     const ts = Store.state.tournaments.slice().reverse();
     if (!ts.length) {
-      view.appendChild(h('div', { class: 'card center sub' }, t('no_tours')));
+      view.appendChild(h('div', { class: 'empty' },
+        h('div', { html: '<svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="var(--dim)" stroke-width="1.4"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.3" fill="var(--dim)" stroke="none"/></svg>' }),
+        h('div', { class: 'et' }, t('no_tours_t')),
+        h('div', { class: 'ed' }, t('no_tours_d')),
+        h('button', { class: 'btn', onClick: createScreen }, t('create_tour_btn'))));
       return;
     }
+    view.appendChild(h('button', { class: 'btn', style: 'margin:8px 0 16px', onClick: createScreen }, '+ ' + t('new_tour')));
     ts.forEach(tour => {
       const modeLbl = { ko: 'KO', rr: t('t_league'), gko: t('t_groups') }[tour.mode];
-      view.appendChild(h('div', { class: 'card tap', onClick: () => detailScreen(tour) },
-        h('div', { class: 'row' },
-          h('div', { style: 'font-size:26px' }, tour.status === 'done' ? '🏆' : '⏳'),
-          h('div', { class: 'grow' },
-            h('div', { style: 'font-weight:700' }, tour.name),
-            h('div', { class: 'sub' }, modeLbl + ' · ' + tour.players.length + ' ' + t('players') +
-              (tour.status === 'done' ? ' · 🏆 ' + pname(tour, tour.winnerIdx) : ''))),
-          h('div', { class: 'arr' }, '›'))));
+      view.appendChild(h('div', { class: 'mrow', onClick: () => detailScreen(tour) },
+        h('span', { class: 'badge', style: tour.status === 'done' ? 'background:var(--grnT);color:var(--grn)' : '' },
+          tour.mode === 'ko' ? 'KO' : tour.mode === 'rr' ? 'LI' : 'GR'),
+        h('span', { class: 'mtxt' },
+          h('span', { class: 'ttl' }, tour.name),
+          h('span', { class: 'dsc' }, modeLbl + ' · ' + tour.players.length + ' ' + t('players') +
+            (tour.status === 'done' ? ' · ' + t('winner_lbl') + ': ' + pname(tour, tour.winnerIdx) : ''))),
+        h('span', { class: 'chev' }, '›')));
     });
   }
 

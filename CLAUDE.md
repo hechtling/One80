@@ -4,7 +4,7 @@
 > Session in diesem Ordner automatisch als Kontext geladen. **Bitte aktuell halten**,
 > wenn sich Architektur, Datenmodell oder Konventionen ändern.
 
-Stand dieser Datei: 2026-07-18
+Stand dieser Datei: 2026-07-19 (nach dem „Club"-Redesign)
 
 ---
 
@@ -48,8 +48,26 @@ Mobile-Ansicht im Browser-DevTools aktivieren (die App ist primär für Hochkant
 - **CSS** in einer Datei (`css/style.css`), Theming über CSS-Variablen + `data-theme` am `<html>`.
 - **PWA**: `manifest.json` + Service Worker (`sw.js`, Cache-First).
 - **Capacitor 7** für die Android-APK (`capacitor.config.json`, `package.json`).
-- Eigene Schriftart **Manrope** (`fonts/manrope-latin.woff2`).
+- Eigene Schriftart **DM Sans** (Variable Font, `fonts/dmsans-latin.woff2`, selbst gehostet).
 - Keine externen Runtime-Dependencies im Web-Teil (alles selbst gehostet, offline-fähig).
+
+### Design „Club" (seit 2026-07)
+
+Das UI folgt der Design-Referenz aus dem Handoff (`README[1].md` + `One80 Prototyp.dc.html`,
+im Claude-Projekt „Dartapp" abgelegt): dunkelgrün, weiche Radien, cremefarbene Typo, **keine Emojis**.
+
+- **Tokens** (CSS-Variablen in `style.css`, je Theme dunkel/hell): `--bg`, `--s1` (Karten),
+  `--s2` (erhöhte Fläche), `--ln` (Hairlines), `--tx`, `--mut`, `--mut2`, `--dim`,
+  `--red`, `--grn`/`--grnT` (Akzent), `--onGrn`, `--btn`/`--onBtn` (invertierter Primär-Button),
+  `--nav`, `--dash`, `--scrim`, `--gold` (nur Erfolge/Toast).
+- **Avatare**: Initialen-Kreise (`UI.avatar(name, size)` / `UI.initials`), keine Emoji-Avatare mehr
+  (`profile.emoji` existiert in Alt-Daten noch, wird aber nirgends mehr angezeigt).
+- **Icons**: geometrische Stroke-SVGs (`UI.ic`, 22×22, stroke 1.8) bzw. Text-Badges
+  (Kreis 44 px mit Kürzel: `01`, `CR`, `CO`, `T20` …). Keine Emojis im UI.
+- Wichtige Klassen: `.mrow`/`.rrow` (Listenzeilen), `.badge`, `.chip`(+`.avc`), `.seg`,
+  `.resume`, `.mcard`/`.slots`/`.copill`/`.kgrid`/`.key` (Match), `.tiles`/`.tile`/`.fbars` (Statistik),
+  `.wincard`/`.winback` (Match-Ende-Overlay), `.shead`/`.cbtn` (Unterseiten-Header), `.mlabel` (Abschnitts-Label).
+- Zahlenformat: Deutsch mit Komma (`UI.f1` ist sprachabhängig).
 
 ---
 
@@ -75,7 +93,7 @@ One80/
 │  ├─ tournament.js        Tour: Turniere (KO / Liga / Gruppen+KO)
 │  ├─ friends.js           Friends: Share-Code Export/Import, Vergleich
 │  └─ app.js               App: Navigation, Profile, Einstellungen, Backup, Dart-Welt; boot()
-├─ fonts/                  Manrope woff2  ⚠️ aktuell NICHT in Git (siehe Abschnitt 10)
+├─ fonts/                  DM Sans woff2 (dmsans-latin.woff2)
 ├─ assets/                 Quell-Icons/Splash für @capacitor/assets (Icon-Generierung)
 ├─ icons/                  fertige PWA-Icons (192/512)
 └─ .github/workflows/
@@ -172,7 +190,7 @@ Hilfsfunktionen: `Store.avgOf(agg)` (3-Dart-Ø), `Store.coPct(agg)` (Checkout-Qu
 ## 7. Konventionen & Fallstricke (WICHTIG beim Ändern)
 
 1. **Service Worker aktualisieren:** Bei jeder Änderung an Dateien im Cache **`VERSION` in
-   `sw.js` hochzählen** (aktuell `one80-v2`) und **neue Dateien in die `ASSETS`-Liste** aufnehmen.
+   `sw.js` hochzählen** (aktuell `one80-v3`) und **neue Dateien in die `ASSETS`-Liste** aufnehmen.
    Sonst sehen installierte Nutzer alte Stände (Cache-First!).
 2. **Neue JS-Datei?** An drei Stellen eintragen: `<script>` in `index.html` (richtige
    Reihenfolge!), `ASSETS` in `sw.js`, und ggf. der `cp`-Befehl in `build-apk.yml`.
@@ -184,18 +202,33 @@ Hilfsfunktionen: `Store.avgOf(agg)` (3-Dart-Ø), `Store.coPct(agg)` (Checkout-Qu
 5. **Checkout-Rechner:** `DartMath.checkout(rest, dartsLeft, out)` liefert Wegvorschlag oder `null`.
 6. **Kein `innerHTML` für Nutzereingaben** – DOM über `h()` bauen (XSS-Schutz, Konsistenz).
 7. **Styling** nur über bestehende CSS-Variablen/Klassen in `style.css` (Theme-Kompatibilität
-   hell/dunkel). Board-Farben: Rot `--red`, Grün `--green`, Akzent `--accent`, Gold `--gold`.
+   hell/dunkel). Akzent ist Grün `--grn`; `--red` nur für Bull-Taste/Warnungen; `--gold` nur Erfolge.
+   **Keine Emojis** in UI-Texten – Stroke-Icons (`UI.ic`) oder Text-Badges verwenden.
 8. **Persistenz:** Nach jeder State-Mutation `Store.save()` aufrufen.
+9. **X01-Ablauf:** `Games`-Engine trennt Aufnahme-Ende und Weiterschalten: `endVisit()` liefert
+   das Event, das UI zeigt ~0,9–1,15 s den Endstand (Eingabe gesperrt), erst `advance(st, ev)`
+   räumt die Aufnahme ab / baut das nächste Leg auf. Undo (`⌫`, Header & Keypad) stellt über
+   Snapshots auch über Spielerwechsel/Bust/Leg-Ende hinweg zurück und bricht den Pending-Timer ab.
+10. **Match verlassen:** ✕ im Match beendet NICHT, sondern geht zurück zur Übersicht –
+    das Match bleibt in `state.active` und erscheint auf der Home-Resume-Karte.
+    (Nur Turnier-Matches fragen nach und verwerfen.)
 
 ---
 
 ## 8. Aktueller Feature-Stand (implementiert)
 
 **Match-Spielmodi** (`games.js`, `GAME_DEFS`):
-- **X01** – voll konfigurierbar (Start 101–1001, Sets/Legs, Double/Master/Straight-Out,
-  Double-In), 1–8 Spieler, **Bot-Gegner** mit einstellbarem Average, Resume laufender Matches.
+- **X01** – Setup nach Design (301/501/701, Best of 3/5/7 Legs, Double-Out-Switch;
+  unter „Erweitert": Out-Modus Double/Master/Straight, Sets, Double-In), 1–6 Spieler,
+  **Bot-Gegner** mit einstellbarem Average, Resume laufender Matches (Home-Resume-Karte).
+  Match-Screen nach Prototyp: aktive Spieler-Karte (Rest groß, Ø, Darts, Leg-Punkte),
+  Gegner-Zeilen, Aufnahme-Slots, Checkout-Pill, Kreis-Keypad mit Single/Double/Triple-Segmenten,
+  Match-Ende-Overlay (Revanche/Fertig + Match-Statistik).
 - **Cricket** – Standard & Cut-Throat.
 - **Around the Clock**, **Shanghai**, **Killer**, **Halve It**.
+- Spieler-Auswahl überall über Chips (`Games.playerPicker`): Profile antippen,
+  „+ Neu" legt inline ein Profil an; das frühere Gast-Konzept ist entfallen
+  (Profile übernehmen das), Bots nur bei X01.
 
 **Eingabemethoden** (`input.js`) – im Spiel umschaltbar:
 - **Board** (SVG-Dartboard zum Antippen, `UI.boardSVG`), **Keys** (Zahlenfeld pro Dart),
@@ -243,17 +276,14 @@ Nutzer öffnen die Seite und wählen „Zum Startbildschirm hinzufügen".
 
 ## 10. Offene Punkte / bekannte Baustellen
 
-- ⚠️ **`fonts/` ist nicht in Git** (`git status` zeigt es als untracked) **und** wird im
-  APK-Workflow **nicht** nach `www/` kopiert. `index.html` preloaded aber
-  `fonts/manrope-latin.woff2` und `sw.js` cached sie. Folge: In der APK (und ggf. auf einem
-  frisch geklonten Deploy) fehlt die Schrift → Fallback-Font / 404.
-  **Fix:** `fonts/` committen und im `cp`-Schritt von `build-apk.yml` `fonts` ergänzen
-  (in `sw.js`-ASSETS ist die Datei bereits gelistet).
-- **Uncommittete Änderungen:** Beim Start dieser Doku waren viele Dateien modifiziert, aber
-  nicht committet (`css/style.css`, `index.html`, `js/*`, `manifest.json`, `sw.js`). Vor
-  größeren Umbauten Stand sichern/committen.
+- `fonts/` ist committet und wird im APK-Workflow nach `www/` kopiert (erledigt 2026-07-19).
+- Alt-Daten: `profile.emoji`/`color` können in bestehenden States noch vorkommen,
+  werden aber nirgends mehr angezeigt (Initialen-Avatare). Beim Datenmodell-Aufräumen ignorieren.
+- Beim X01-Setup sind die Startpunkte aufs Design reduziert (301/501/701; 201 entfiel).
 - `SPEC.md` beschreibt noch nicht Umgesetztes (z. B. QR-Codes für Freunde, echtes Online-System,
   eingebettete Web-Bereiche statt Absprung). Vor „ist das schon da?" den Code prüfen, nicht die Spec.
+- Design-Referenzen (maßgeblich bei UI-Fragen): `README[1].md` und `One80 Prototyp.dc.html`
+  im Claude-Projekt „Dartapp".
 
 ---
 
