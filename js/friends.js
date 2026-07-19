@@ -2,6 +2,9 @@
 const Friends = (() => {
 
   const PREFIX = 'ONE80.';
+  /* Basis für QR-Links. Wird zur Laufzeit aus der Adresse abgeleitet, sofern die App
+     unter http(s) läuft – in der APK (file://, localhost) greift der feste Fallback. */
+  const HOME = 'https://hechtling.github.io/One80/';
 
   function makeSnapshot(p) {
     const a = p.agg;
@@ -30,8 +33,31 @@ const Friends = (() => {
     return snap;
   }
 
+  /* Kompakter Link für QR-Code und zum Verschicken.
+     base64url, damit im Hash nichts prozent-kodiert werden muss (spart QR-Größe). */
+  function shareUrl(p) {
+    const b64 = encode(p).slice(PREFIX.length)
+      .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    const base = /^https?:$/.test(location.protocol) ? location.href.split('#')[0] : HOME;
+    return base + '#f=' + b64;
+  }
+
+  /* Akzeptiert rohen Share-Code, QR-Link oder kopierten Text und liefert den Share-Code */
+  function normalize(text) {
+    text = String(text || '').trim();
+    const m = text.match(/[#?&]f=([A-Za-z0-9\-_+/=%]+)/);
+    if (m) {
+      let b64 = decodeURIComponent(m[1]).replace(/-/g, '+').replace(/_/g, '/');
+      while (b64.length % 4) b64 += '=';
+      return PREFIX + b64;
+    }
+    /* Code auch aus umgebendem Text herausschneiden (z. B. kopierte WhatsApp-Nachricht) */
+    const c = text.match(/ONE80\.([A-Za-z0-9+/]+=*)/);
+    return c ? PREFIX + c[1] : text;
+  }
+
   function importCode(code) {
-    const snap = decode(code);
+    const snap = decode(normalize(code));
     const existing = Store.state.friends.findIndex(f => f.n === snap.n);
     if (existing >= 0) { Store.state.friends[existing] = snap; }
     else Store.state.friends.push(snap);
@@ -49,6 +75,38 @@ const Friends = (() => {
     } catch (e) {
       UI.modal({ title: t('my_code'), body: h('code', { class: 'sharecode' }, code), buttons: [{ label: t('ok') }] });
     }
+  }
+
+  /* Kamera öffnen und gescannten Code importieren */
+  function startScan() {
+    QR.scan(
+      text => {
+        try {
+          const snap = importCode(text);
+          UI.toast(snap.n + ' ' + t('friend_added'));
+          App.rerender();
+        } catch (e) { UI.toast(t('invalid_code')); }
+      },
+      err => UI.toast(err === 'denied' ? t('cam_denied')
+        : err === 'unsupported' ? t('cam_unsupported') : t('cam_error')),
+      { hint: t('scan_hint') }
+    );
+  }
+
+  /* Beim Start: geteilten Link (#f=…) auswerten und Import anbieten.
+     Gibt true zurück, wenn ein Link erkannt wurde. */
+  function handleLink() {
+    if (!/[#?&]f=/.test(location.hash || '')) return false;
+    const code = normalize(location.hash);
+    try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { }
+    let snap;
+    try { snap = decode(code); } catch (e) { UI.toast(t('invalid_code')); return false; }
+    UI.confirm(t('add_friend_q', { n: snap.n }), () => {
+      importCode(code);
+      UI.toast(snap.n + ' ' + t('friend_added'));
+      App.rerender();
+    });
+    return true;
   }
 
   function compareScreen(f) {
@@ -106,41 +164,59 @@ const Friends = (() => {
         card.appendChild(h('div', { class: 'sub' }, t('need_profile_stats')));
       } else {
         let selId = Store.state.settings.statsProfile || Store.state.profiles[0].id;
-        const codeEl = h('code', { class: 'sharecode' });
+        let link = '';
+        const qrBox = h('div', { class: 'qrbox' });
+        const codeEl = h('code', { class: 'sharecode', style: 'display:none' });
         const chips = h('div', { style: 'display:flex;flex-wrap:wrap' });
+        const toggle = h('button', {
+          class: 'btn sec small', style: 'flex:1', onClick: () => {
+            const open = codeEl.style.display === 'none';
+            codeEl.style.display = open ? 'block' : 'none';
+            toggle.textContent = open ? t('hide_code') : t('show_code');
+          }
+        }, t('show_code'));
         const upd = () => {
           const p = Store.profile(selId) || Store.state.profiles[0];
+          link = shareUrl(p);
           codeEl.textContent = encode(p);
+          /* Inhalt ist vollständig selbst erzeugt (nur Zahlen), daher unkritisch */
+          qrBox.innerHTML = QR.svgString(link, { ec: 'M', quiet: 2 });
           [...chips.children].forEach(c => c.classList.toggle('on', c.dataset.id === p.id));
         };
         Store.state.profiles.forEach(p => {
           chips.appendChild(h('span', { class: 'chip', 'data-id': p.id, onClick: () => { selId = p.id; upd(); } },
             UI.avatar(p.name), p.name));
         });
-        card.append(chips, codeEl,
-          h('div', { class: 'row', style: 'margin-top:4px' },
-            h('button', {
-              class: 'btn sec small', style: 'flex:1',
-              onClick: () => { navigator.clipboard && navigator.clipboard.writeText(codeEl.textContent).then(() => UI.toast(t('copied'))); }
-            }, t('copy')),
-            h('button', { class: 'btn small', style: 'flex:1', onClick: () => shareCode(codeEl.textContent) }, t('share'))));
+        card.append(chips, qrBox,
+          h('div', { class: 'sub center', style: 'margin:2px 0 10px' }, t('qr_hint')),
+          codeEl,
+          h('div', { class: 'row' },
+            toggle,
+            h('button', { class: 'btn small', style: 'flex:1', onClick: () => shareCode(link) }, t('share'))));
         upd();
       }
 
       /* Import */
       view.appendChild(h('div', { class: 'mlabel' }, t('add_friend')));
       const inp = h('input', { type: 'text', placeholder: 'ONE80.…' });
-      view.appendChild(h('div', { class: 'card' },
+      const imp = h('div', { class: 'card' });
+      if (QR.scanSupported()) {
+        imp.append(
+          h('button', { class: 'btn', style: 'height:48px;font-size:14px', onClick: startScan }, t('scan_qr')),
+          h('div', { class: 'sub center', style: 'margin:12px 0 2px' }, t('or_paste')));
+      }
+      imp.append(
         h('label', { class: 'fld' }, t('paste_code'), inp),
         h('button', {
-          class: 'btn', style: 'height:46px;font-size:14px', onClick: () => {
+          class: 'btn sec', style: 'height:46px;font-size:14px', onClick: () => {
             try {
               const snap = importCode(inp.value);
               UI.toast(snap.n + ' ' + t('friend_added'));
               App.rerender();
             } catch (e) { UI.toast(t('invalid_code')); }
           }
-        }, t('import'))));
+        }, t('import')));
+      view.appendChild(imp);
 
       /* Rangliste (Profile + Freunde) */
       const entries = [];
@@ -180,5 +256,5 @@ const Friends = (() => {
     });
   }
 
-  return { screen };
+  return { screen, handleLink };
 })();

@@ -25,15 +25,15 @@
   --gold:oklch(0.82 0.1 90);
 }
 [data-theme="light"] {
-  --bg:#F2F1E8; --s1:#FFFFFF; --s2:#E7EDE0;
-  --ln:rgba(21,34,25,.12);
-  --tx:#152219; --mut:rgba(21,34,25,.55); --mut2:rgba(21,34,25,.42); --dim:rgba(21,34,25,.30);
+  --bg:#DEDCD0; --s1:#EFEDE3; --s2:#D2DCC7;
+  --ln:rgba(21,34,25,.15);
+  --tx:#152219; --mut:rgba(21,34,25,.58); --mut2:rgba(21,34,25,.45); --dim:rgba(21,34,25,.32);
   --red:oklch(0.58 0.19 25);
-  --grn:oklch(0.52 0.12 155); --grnT:oklch(0.52 0.12 155 / .12);
-  --onGrn:#FFFFFF;
+  --grn:oklch(0.47 0.12 155); --grnT:oklch(0.47 0.12 155 / .12);
+  --onGrn:#EFEDE3;
   --btn:#152219; --onBtn:#F1ECDF;
-  --nav:#FFFFFF;
-  --dash:rgba(21,34,25,.25);
+  --nav:#E8E5DA;
+  --dash:rgba(21,34,25,.28);
   --scrim:rgba(10,18,13,.55);
   --gold:oklch(0.62 0.11 90);
 }
@@ -415,6 +415,35 @@ table.tbl tr:last-child td { border-bottom:none; }
 .listitem { display:flex; align-items:center; gap:13px; padding:12px 4px; border-bottom:1px solid var(--ln); cursor:pointer; }
 .listitem:last-child { border-bottom:none; }
 .listitem .grow { flex:1; min-width:0; }
+
+/* ---- QR-Code ---- */
+.qrbox {
+  width:100%; max-width:260px; aspect-ratio:1; margin:14px auto 8px;
+  background:#fff; border-radius:14px; padding:10px; box-sizing:border-box;
+  display:flex; align-items:center; justify-content:center;
+}
+.qrbox svg { display:block; width:100%; height:100%; }
+
+/* Vollbild-Scanner */
+.qrscan {
+  position:fixed; inset:0; z-index:120; background:#000;
+  display:flex; align-items:center; justify-content:center; overflow:hidden;
+}
+.qrscan video { width:100%; height:100%; object-fit:cover; }
+.qrframe {
+  position:absolute; width:min(68vw, 300px); aspect-ratio:1;
+  border:2px solid rgba(255,255,255,.9); border-radius:20px;
+  box-shadow:0 0 0 100vmax rgba(0,0,0,.45);
+}
+.qrhint {
+  position:absolute; left:0; right:0; bottom:calc(12vh + env(safe-area-inset-bottom));
+  text-align:center; color:#fff; font-size:14px; font-weight:500;
+  text-shadow:0 1px 6px rgba(0,0,0,.7); padding:0 24px;
+}
+.qrclose {
+  position:absolute; top:calc(14px + env(safe-area-inset-top)); right:14px;
+  background:rgba(0,0,0,.55); color:#fff; border:1px solid rgba(255,255,255,.35);
+}
 
 code.sharecode {
   display:block; background:var(--s2); border-radius:12px; padding:10px;

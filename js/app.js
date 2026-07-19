@@ -47,7 +47,7 @@ const App = (() => {
   function applyTheme(v) {
     document.documentElement.setAttribute('data-theme', v);
     const m = document.querySelector('meta[name="theme-color"]');
-    if (m) m.setAttribute('content', v === 'light' ? '#F2F1E8' : '#0F1D16');
+    if (m) m.setAttribute('content', v === 'light' ? '#DEDCD0' : '#0F1D16');
   }
 
   /* ---------- Profile ---------- */
@@ -131,6 +131,28 @@ const App = (() => {
         mkTog(t('caller_lbl'), 'caller', true),
         mkTog(t('sfx_lbl'), 'sfx', true),
         mkTog(t('vibrate_lbl'), 'vibrate', true)));
+
+      /* Caller-Probe: Ansagen anhören und sehen, ob alle Clips da sind */
+      view.appendChild(h('div', { class: 'mlabel' }, t('caller_test')));
+      const info = h('div', { class: 'sub', style: 'margin-bottom:12px' }, t('caller_checking'));
+      const demo = [180, 140, 100, 81, 60, 26, 0];
+      view.appendChild(h('div', { class: 'card' }, info,
+        h('div', { class: 'row', style: 'flex-wrap:wrap;gap:8px' },
+          ...demo.map(n => h('button', {
+            class: 'chip plain', onClick: () => { s.caller = true; Store.save(); UI.callScore(n); }
+          }, n === 0 ? t('no_score') : String(n))),
+          h('button', {
+            class: 'chip plain', onClick: () => { s.caller = true; Store.save(); UI.say('Game shot, and the match!'); }
+          }, 'Game shot'))));
+
+      UI.callerStatus().then(st => {
+        if (st.pack === 'none') info.textContent = t('caller_none');
+        else if (st.full >= 181) info.textContent = t('caller_pack_full');
+        else if (st.full > 0) info.textContent = t('caller_pack_part', { f: st.full });
+        else info.textContent = st.missing.length
+          ? t('caller_missing', { n: st.missing.length, k: st.missing.slice(0, 6).join(', ') })
+          : t('caller_ok', { n: st.blocks, f: st.full });
+      });
     });
   }
 
@@ -267,6 +289,15 @@ const App = (() => {
       navigator.serviceWorker.register('sw.js').catch(() => { });
     }
     root('play');
+    /* Caller-Samples im Hintergrund vorladen, damit die erste Ansage sofort sitzt */
+    if (s.caller) {
+      const pre = () => UI.callerLoad();
+      if (window.requestIdleCallback) requestIdleCallback(pre, { timeout: 4000 });
+      else setTimeout(pre, 1500);
+    }
+    /* Geteilter Freunde-Link (#f=…) – beim Start und wenn er im laufenden Betrieb ankommt */
+    Friends.handleLink();
+    window.addEventListener('hashchange', () => Friends.handleLink());
   }
 
   return { show, back, root, rerender, gameMode, editProfile, boot };

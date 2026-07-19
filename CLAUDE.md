@@ -87,11 +87,14 @@ One80/
 │  ├─ store.js             Store: zentrale Datenhaltung (localStorage)
 │  ├─ ui.js                h()-Helper, UI (Modal/Toast/Charts), Dartboard-SVG, DartMath
 │  ├─ input.js             Input: umschaltbare Eingabe (Board / Zahlen / Rundensumme)
-│  ├─ games.js             Games: Play-Tab + alle Match-Spielmodi (inkl. Bot)
-│  ├─ training.js          Training: alle Trainingsmodi (TRAIN_DEFS)
+│  ├─ games.js             Games: Play-Tab, X01 + Basis-Spielmodi, Casual-Shell (runCasual)
+│  ├─ games-extra.js       weitere Match-Modi, meldet sich per Games.register() an
+│  ├─ training.js          Training: Trainings-Tab, trainShell + Basis-Modi (TRAIN_DEFS)
+│  ├─ training-extra.js    weitere Trainingsmodi, meldet sich per Training.register() an
 │  ├─ stats.js             Stats: Statistik-Tab, Erfolge/Abzeichen (ACH), Aufzeichnung
 │  ├─ tournament.js        Tour: Turniere (KO / Liga / Gruppen+KO)
-│  ├─ friends.js           Friends: Share-Code Export/Import, Vergleich
+│  ├─ qr.js                QR: Encoder (Byte-Modus, V1–40) + SVG-Ausgabe + Kamera-Scanner
+│  ├─ friends.js           Friends: Share-Code/QR Export/Import, Vergleich
 │  └─ app.js               App: Navigation, Profile, Einstellungen, Backup, Dart-Welt; boot()
 ├─ fonts/                  DM Sans woff2 (dmsans-latin.woff2)
 ├─ assets/                 Quell-Icons/Splash für @capacitor/assets (Icon-Generierung)
@@ -110,11 +113,12 @@ Kommunikation läuft über diese Globals (keine Imports):
 | Global      | Datei         | Rolle |
 |-------------|---------------|-------|
 | `App`       | app.js        | Navigation, Profile, Settings, Backup, Boot |
-| `Games`     | games.js      | Play-Tab, Match-Logik aller Spielmodi |
-| `Training`  | training.js   | Trainings-Tab und -Modi |
+| `Games`     | games.js (+ games-extra.js)       | Play-Tab, Match-Logik aller Spielmodi |
+| `Training`  | training.js (+ training-extra.js) | Trainings-Tab und -Modi |
 | `Stats`     | stats.js      | Statistik-Tab, Erfolge, Ergebnis-Aufzeichnung |
 | `Tour`      | tournament.js | Turnier-Tab |
-| `Friends`   | friends.js    | Freunde-Tab (Share-Codes) |
+| `Friends`   | friends.js    | Freunde-Tab (Share-Codes, QR-Links) |
+| `QR`        | qr.js         | QR-Code erzeugen (`matrix`/`svgString`) und scannen (`scan`) |
 | `Store`     | store.js      | State + localStorage-Persistenz |
 | `UI`        | ui.js         | Modal, Toast, Confirm, Charts, Dartboard, Sound/Caller, Icons |
 | `Input`     | input.js      | Eingabe-Widget (Board/Keys/Sum) |
@@ -189,9 +193,12 @@ Hilfsfunktionen: `Store.avgOf(agg)` (3-Dart-Ø), `Store.coPct(agg)` (Checkout-Qu
 
 ## 7. Konventionen & Fallstricke (WICHTIG beim Ändern)
 
-1. **Service Worker aktualisieren:** Bei jeder Änderung an Dateien im Cache **`VERSION` in
-   `sw.js` hochzählen** (aktuell `one80-v3`) und **neue Dateien in die `ASSETS`-Liste** aufnehmen.
-   Sonst sehen installierte Nutzer alte Stände (Cache-First!).
+1. **Service Worker:** Strategie ist **Network-First mit 3 s Timeout** (seit `one80-v5`):
+   online kommt immer der aktuelle Stand, offline der Cache. Bei neuen Dateien trotzdem
+   **`VERSION` hochzählen** (aktuell `one80-v9`) und die Datei in die `ASSETS`-Liste aufnehmen,
+   damit sie beim Install vorgecacht wird (Offline-Fähigkeit).
+   > Vorher war es Cache-First – dadurch sahen installierte Nutzer nach Änderungen noch
+   > tagelang alte Stände. Falls doch mal etwas hängt: PWA-Cache leeren bzw. App-Daten löschen.
 2. **Neue JS-Datei?** An drei Stellen eintragen: `<script>` in `index.html` (richtige
    Reihenfolge!), `ASSETS` in `sw.js`, und ggf. der `cp`-Befehl in `build-apk.yml`.
 3. **i18n:** Jeder neue sichtbare Text braucht einen Key in **beiden** Sprachen (`de` und `en`)
@@ -212,6 +219,20 @@ Hilfsfunktionen: `Store.avgOf(agg)` (3-Dart-Ø), `Store.coPct(agg)` (Checkout-Qu
 10. **Match verlassen:** ✕ im Match beendet NICHT, sondern geht zurück zur Übersicht –
     das Match bleibt in `state.active` und erscheint auf der Home-Resume-Karte.
     (Nur Turnier-Matches fragen nach und verwerfen.)
+11. **Neuen Spielmodus ergänzen** → in `games-extra.js`, nicht in `games.js`:
+    `new<X>(cfg)` (State mit `players`, `cur`, `visitDarts`, `over`, `winnerIdx`),
+    `<x>Dart(st, d)` → `{toast?, say?}`, `render<X>(st, el)`, dann Eintrag mit
+    `cat`/`badge`/`name`/`desc`/`go` an `Games.register`. Bausteine kommen aus `Games`
+    (`runCasual`, `nextTurn`, `visitRow`, `pRow`, `targetCard`, `simpleConfig`, `segPick`).
+    ⚠️ `runCasual` rendert **nach** dem letzten Dart und **vor** dem Sieger-Overlay – Render-Funktionen
+    müssen Rundenindizes deshalb klemmen (`Math.min(st.ridx, SEQ.length - 1)`), sonst crasht das Spielende.
+12. **Neuen Trainingsmodus ergänzen** → in `training-extra.js`:
+    `Training.trainShell(profile, mode, session, restart)` mit
+    `session = { st, title, label(), status(), progress(), dart(d), summary(), extra?, timeLimit? }`,
+    dann Eintrag an `Training.register`. `timeLimit` (Sekunden) blendet einen Countdown ein, der
+    mit dem ersten Dart startet. `summary().value` muss eine **Zahl** sein;
+    `higherBetter: false` setzen, wenn kleinere Werte besser sind.
+    `st` muss JSON-serialisierbar bleiben – das Undo arbeitet mit Snapshots.
 
 ---
 
@@ -226,6 +247,10 @@ Hilfsfunktionen: `Store.avgOf(agg)` (3-Dart-Ø), `Store.coPct(agg)` (Checkout-Qu
   Match-Ende-Overlay (Revanche/Fertig + Match-Statistik).
 - **Cricket** – Standard & Cut-Throat.
 - **Around the Clock**, **Shanghai**, **Killer**, **Halve It**.
+- Aus `games-extra.js` (registriert über `Games.register`): **Gotcha**, **Nine Dart Shootout**,
+  **Sudden Death**, **Mickey Mouse**, **Bermuda**, **Baseball**, **Golf**, **High-Low**,
+  **Tic-Tac-Toe**. Zusammen 15 Modi, im Play-Tab in drei aufklappbare Kategorien gruppiert
+  (`GAME_CATS`: `count` / `classic` / `fun`; Zustand in `settings.gameOpen`).
 - Spieler-Auswahl überall über Chips (`Games.playerPicker`): Profile antippen,
   „+ Neu" legt inline ein Profil an; das frühere Gast-Konzept ist entfallen
   (Profile übernehmen das), Bots nur bei X01.
@@ -234,10 +259,19 @@ Hilfsfunktionen: `Store.avgOf(agg)` (3-Dart-Ø), `Store.coPct(agg)` (Checkout-Qu
 - **Board** (SVG-Dartboard zum Antippen, `UI.boardSVG`), **Keys** (Zahlenfeld pro Dart),
   **Sum** (Rundensumme). Undo unterstützt.
 
-**Trainingsmodi** (`training.js`, `TRAIN_DEFS`):
-- `doubles` (Doppel-Training), `double_single`, `checkout`, `ladder` (170-Leiter),
-  `scoring`, `bobs27` (Bob's 27), `jdc` (JDC Challenge), `catch40`.
-- Ergebnisse fließen ins Profil (Bestwerte + Verlaufskurven).
+**Trainingsmodi** (`training.js` + `training-extra.js`, `TRAIN_DEFS`) – 26 Modi, im Trainings-Tab
+in fünf aufklappbare Kategorien gruppiert (`TRAIN_CATS`, Zustand in `settings.trainOpen`):
+- **Checkout & Doppel** (`co`): `checkout`, `doubles`, `double_single`, `bobs27`,
+  `c121` (121-Challenge), `dkiller` (Doppel-Killer), `co_speed` (Speed-Checkout, auf Zeit).
+- **Scoring & Präzision** (`score`): `scoring`, `highscore`, `t20streak` (Treble Hunter),
+  `five_in_five` (51 in 5), `splitscore`, `bull_tr`, `tictactoe`.
+- **Klassiker** (`classic`): `atc_solo`, `shanghai_tr`, `cricket_solo`, `halve_solo`,
+  `dragon` (Chase the Dragon), `nine_lives`.
+- **Warm-up & Routinen** (`warm`): `warmup`, `rundlauf` (auf Zeit), `mulligan`.
+- **Challenges** (`challenge`): `ladder` (170-Leiter), `jdc`, `catch40`.
+- Ergebnisse fließen ins Profil (Bestwerte + Verlaufskurven). Modi mit
+  `summary().higherBetter: false` (z. B. alle „möglichst wenige Darts"-Modi) werten kleinere
+  Werte als Bestleistung.
 
 **Statistiken & Profile** (`stats.js`, `app.js`):
 - Beliebig viele Profile (Name + Emoji-Avatar).
@@ -247,8 +281,26 @@ Hilfsfunktionen: `Store.avgOf(agg)` (3-Dart-Ø), `Store.coPct(agg)` (Checkout-Qu
 
 **Turniere** (`tournament.js`): KO-Baum, Liga/Round-Robin (Tabelle), Gruppen + KO.
 
-**Freunde** (`friends.js`): Profil als **Share-Code** exportieren/importieren, Vergleichsansicht
-– serverlos.
+**Freunde** (`friends.js`, `qr.js`): Profil als **Share-Code** exportieren/importieren,
+Vergleichsansicht – serverlos. Drei Wege, sich zu adden:
+
+1. **QR-Code** – der Freunde-Tab zeigt den eigenen Code als QR. Inhalt ist ein Link
+   `https://hechtling.github.io/One80/#f=<base64url>` (Konstante `HOME` in `friends.js`;
+   läuft die App unter `http(s)`, wird die Basis stattdessen aus `location` abgeleitet).
+   Dadurch funktioniert auch jede fremde Kamera-App: Scan → App öffnet sich → Rückfrage → Import.
+2. **In-App-Scanner** – Button „QR-Code scannen" öffnet `QR.scan()` (getUserMedia +
+   `BarcodeDetector`). Ohne Unterstützung wird der Button ausgeblendet und nur das
+   Einfügefeld gezeigt. Funktioniert offline, also auch ohne erreichbare Website.
+3. **Textcode / Link teilen** – wie bisher, per WhatsApp o. Ä.
+
+`Friends.handleLink()` wird in `App.boot()` und bei `hashchange` aufgerufen und wertet
+`#f=…` aus. `normalize()` akzeptiert alle Formen: Link (base64url **und** prozent-kodiert),
+rohen `ONE80.`-Code und Codes mitten im Fließtext.
+
+**QR-Encoder** (`qr.js`): eigenständig, keine Dependencies. Byte-Modus, Versionen 1–40,
+alle vier Fehlerkorrekturstufen, Reed-Solomon, automatische Maskenwahl nach ISO 18004.
+Gegen `segno` verifiziert (alle 40 Versionen × 4 Stufen modul-identisch). `QR.svgString()`
+liefert fertiges SVG; die Ausgabe braucht wegen des Kontrasts eine weiße Fläche (`.qrbox`).
 
 **Drumherum** (`app.js`, `ui.js`):
 - Theme hell/dunkel, Sprache DE/EN, Sound-Effekte + **Sprach-Caller** („One hundred and eighty!"),
@@ -280,8 +332,14 @@ Nutzer öffnen die Seite und wählen „Zum Startbildschirm hinzufügen".
 - Alt-Daten: `profile.emoji`/`color` können in bestehenden States noch vorkommen,
   werden aber nirgends mehr angezeigt (Initialen-Avatare). Beim Datenmodell-Aufräumen ignorieren.
 - Beim X01-Setup sind die Startpunkte aufs Design reduziert (301/501/701; 201 entfiel).
-- `SPEC.md` beschreibt noch nicht Umgesetztes (z. B. QR-Codes für Freunde, echtes Online-System,
-  eingebettete Web-Bereiche statt Absprung). Vor „ist das schon da?" den Code prüfen, nicht die Spec.
+- `SPEC.md` beschreibt noch nicht Umgesetztes (z. B. echtes Online-System, eingebettete
+  Web-Bereiche statt Absprung). Vor „ist das schon da?" den Code prüfen, nicht die Spec.
+- **QR-Link hängt an `HOME`** in `friends.js`. Zieht die App auf eine andere Domain um,
+  muss diese Konstante mit – sonst zeigen alte QR-Codes ins Leere. Der In-App-Scanner ist
+  davon nicht betroffen.
+- Der Scanner braucht `BarcodeDetector` (Android/Chrome vorhanden, iOS-Safari nicht) und
+  im APK die Kamera-Berechtigung – die trägt ein eigener Schritt in `build-apk.yml` nach,
+  weil `npx cap add android` das Manifest in der CI jedes Mal neu erzeugt.
 - Design-Referenzen (maßgeblich bei UI-Fragen): `README[1].md` und `One80 Prototyp.dc.html`
   im Claude-Projekt „Dartapp".
 

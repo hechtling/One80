@@ -34,9 +34,27 @@ jobs:
         run: |
           mkdir -p www
           cp -r index.html manifest.json sw.js css js icons fonts www/
+          # Caller-Sprachclips, falls vorhanden
+          [ -d audio ] && cp -r audio www/ || echo "kein audio-Ordner – Caller nutzt die System-Stimme"
 
       - name: Android-Plattform erzeugen
         run: npx cap add android
+
+      - name: Kamera-Berechtigung für den QR-Scanner eintragen
+        run: |
+          python3 - <<'PY'
+          import re, pathlib
+          f = pathlib.Path('android/app/src/main/AndroidManifest.xml')
+          x = f.read_text()
+          perms = ('    <uses-permission android:name="android.permission.CAMERA" />\n'
+                   '    <uses-feature android:name="android.hardware.camera" android:required="false" />\n')
+          if 'android.permission.CAMERA' not in x:
+              x = x.replace('</manifest>', perms + '</manifest>')
+              f.write_text(x)
+              print('Kamera-Berechtigung ergänzt')
+          else:
+              print('Kamera-Berechtigung war bereits vorhanden')
+          PY
 
       - name: App-Icons und Splashscreen generieren
         run: >

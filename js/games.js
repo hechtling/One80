@@ -263,7 +263,7 @@ const Games = (() => {
         if (ev && ev.visitEnd) {
           const pl = st.players[ev.playerIdx];
           if (ev.bust) {
-            UI.sfx.bust(); UI.say('No score');
+            UI.sfx.bust(); UI.say('Bust!');
             UI.toast(t('bust_stay', { n: pl.name, v: pl.score }));
           } else if (!ev.finished) {
             UI.callScore(ev.visitTotal);
@@ -674,7 +674,8 @@ const Games = (() => {
   }
 
   function renderShanghai(st, el) {
-    el.appendChild(targetCard(String(st.round), t('round_x_of', { a: st.round, b: st.rounds })));
+    const r = Math.min(st.round, st.rounds);
+    el.appendChild(targetCard(String(r), t('round_x_of', { a: r, b: st.rounds })));
     st.players.forEach((p, i) => {
       el.appendChild(pRow(p, i === st.cur, h('div', { style: 'font-size:24px;font-weight:700' }, String(p.points))));
     });
@@ -798,8 +799,10 @@ const Games = (() => {
   }
 
   function renderHalve(st, el) {
-    el.appendChild(targetCard(halveLabel(HALVE_ROUNDS[st.ridx].k),
-      t('round_x_of', { a: st.ridx + 1, b: HALVE_ROUNDS.length })));
+    // nach der letzten Runde steht ridx über dem Array – auf den letzten Eintrag klemmen
+    const ri = Math.min(st.ridx, HALVE_ROUNDS.length - 1);
+    el.appendChild(targetCard(halveLabel(HALVE_ROUNDS[ri].k),
+      t('round_x_of', { a: ri + 1, b: HALVE_ROUNDS.length })));
     st.players.forEach((p, i) => {
       el.appendChild(pRow(p, i === st.cur, h('div', { style: 'font-size:24px;font-weight:700' }, String(p.score))));
     });
@@ -1091,10 +1094,17 @@ const Games = (() => {
 
   /* ================= SPIELEN-TAB (Home) ================= */
 
+  /* Kategorien – Reihenfolge bestimmt die Anzeige im Spielen-Tab */
+  const GAME_CATS = [
+    { id: 'count', name: 'gc_count' },
+    { id: 'classic', name: 'gc_classic' },
+    { id: 'fun', name: 'gc_fun' }
+  ];
+
   const GAME_DEFS = [
-    { badge: '01', name: 'X01', desc: 'g_x01_d', go: configX01 },
+    { cat: 'count', badge: '01', name: 'X01', desc: 'g_x01_d', go: configX01 },
     {
-      badge: 'CR', name: 'Cricket', desc: 'g_cricket_d',
+      cat: 'classic', badge: 'CR', name: 'Cricket', desc: 'g_cricket_d',
       go: () => simpleConfig('Cricket', 'CR', {
         min: 2, max: 4,
         extras: host => {
@@ -1105,7 +1115,7 @@ const Games = (() => {
       }, (players, ex) => startCricket(players, ex.seg.value() === 'cut'))
     },
     {
-      badge: 'AC', name: 'Around the Clock', desc: 'g_atc_d',
+      cat: 'classic', badge: 'AC', name: 'Around the Clock', desc: 'g_atc_d',
       go: () => simpleConfig('Around the Clock', 'AC', {
         min: 1, max: 6,
         extras: host => {
@@ -1125,7 +1135,7 @@ const Games = (() => {
       }, (players, ex) => startATC(players, ex.seg.value(), ex.bull()))
     },
     {
-      badge: 'SH', name: 'Shanghai', desc: 'g_shanghai_d',
+      cat: 'classic', badge: 'SH', name: 'Shanghai', desc: 'g_shanghai_d',
       go: () => simpleConfig('Shanghai', 'SH', {
         min: 1, max: 6,
         extras: host => {
@@ -1136,7 +1146,7 @@ const Games = (() => {
       }, (players, ex) => startShanghai(players, ex.seg.value()))
     },
     {
-      badge: 'KI', name: 'Killer', desc: 'g_killer_d',
+      cat: 'fun', badge: 'KI', name: 'Killer', desc: 'g_killer_d',
       go: () => simpleConfig('Killer', 'KI', {
         min: 2, max: 6,
         extras: host => {
@@ -1147,10 +1157,16 @@ const Games = (() => {
       }, (players, ex) => startKiller(players, ex.seg.value()))
     },
     {
-      badge: '½', name: 'Halve It', desc: 'g_halve_d',
+      cat: 'classic', badge: '½', name: 'Halve It', desc: 'g_halve_d',
       go: () => simpleConfig('Halve It', '½', { min: 1, max: 6 }, players => startHalve(players))
     }
   ];
+
+  /* Registrierung weiterer Spielmodi aus games-extra.js */
+  function register(def) {
+    if (!GAME_DEFS.some(g => g.name === def.name)) GAME_DEFS.push(def);
+    return def;
+  }
 
   function renderTab(view) {
     // Kopfzeile: Logo + Einstellungen
@@ -1172,16 +1188,37 @@ const Games = (() => {
       h('button', { class: 'rbtn', onClick: () => hasMatch ? resumeActive() : configX01() },
         hasMatch ? t('resume_btn') : t('start_btn2'))));
 
-    view.appendChild(h('div', { class: 'mlabel', style: 'margin-top:0' }, t('game_mode')));
-    GAME_DEFS.forEach(g => {
-      view.appendChild(h('div', { class: 'mrow', onClick: g.go },
-        h('span', { class: 'badge' }, g.badge),
-        h('span', { class: 'mtxt' },
-          h('span', { class: 'ttl' }, g.name),
-          h('span', { class: 'dsc' }, t(g.desc))),
-        h('span', { class: 'chev' }, '›')));
+    const open = Store.state.settings.gameOpen = Store.state.settings.gameOpen || {};
+    const gameRow = g => h('div', { class: 'mrow', onClick: g.go },
+      h('span', { class: 'badge' }, g.badge),
+      h('span', { class: 'mtxt' },
+        h('span', { class: 'ttl' }, g.name),
+        h('span', { class: 'dsc' }, t(g.desc))),
+      h('span', { class: 'chev' }, '›'));
+
+    GAME_CATS.forEach((c, ci) => {
+      const list = GAME_DEFS.filter(g => (g.cat || 'classic') === c.id);
+      if (!list.length) return;
+      if (open[c.id] === undefined) open[c.id] = true;
+      const body = h('div', { style: open[c.id] ? '' : 'display:none' }, list.map(gameRow));
+      const caret = h('span', { class: 'chev', style: 'transition:transform .18s' + (open[c.id] ? ';transform:rotate(90deg)' : '') }, '›');
+      view.appendChild(h('div', {
+        class: 'mlabel', style: 'display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none' + (ci === 0 ? ';margin-top:0' : ''),
+        onClick: () => {
+          open[c.id] = !open[c.id];
+          body.style.display = open[c.id] ? '' : 'none';
+          caret.style.transform = open[c.id] ? 'rotate(90deg)' : '';
+          Store.save();
+        }
+      }, caret, t(c.name), h('span', { style: 'color:var(--dim);font-weight:600' }, String(list.length))));
+      view.appendChild(body);
     });
   }
 
-  return { renderTab, startX01, resumeActive, newX01, playerPicker, segPick };
+  return {
+    renderTab, startX01, resumeActive, newX01, playerPicker, segPick,
+    GAME_DEFS, GAME_CATS, register,
+    /* Bausteine für games-extra.js */
+    runCasual, nextTurn, visitRow, pRow, targetCard, simpleConfig
+  };
 })();

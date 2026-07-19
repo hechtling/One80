@@ -284,8 +284,216 @@ const UI = (() => {
     ach: () => { beep(880, 0.1); beep(1175, 0.25, 'triangle', 0.1, 0.11); }
   };
 
-  function say(text) {
-    if (!Store.state.settings.caller || !window.speechSynthesis) return;
+  /* ---------- Caller: echte Sprach-Samples mit TTS-Fallback ----------
+     Ansagen werden aus kurzen Clips zusammengesetzt ("one hundred and" + "eighty").
+     Liegt für einen Score eine komplette Aufnahme unter audio/caller/full/ vor,
+     hat die Vorrang. Fehlt eine Datei, springt die System-Stimme ein –
+     die App funktioniert also auch ganz ohne Audio-Ordner.                        */
+  const CALLER_BASE = 'audio/caller/';
+  const CALLER_EXT = '.mp3';
+  const JOIN_OVERLAP = 0.03;   // s, Überlappung an den Nahtstellen
+  const EDGE_FADE = 0.012;     // s, Ein-/Ausblendung gegen Knackser
+  const TRIM_THRESHOLD = 0.012;// Amplitude, ab der ein Clip als "Ton" gilt
+  const TRIM_PAD = 0.015;      // s, Luft vor/hinter dem erkannten Ton
+
+  const LOAD_PARALLEL = 6;     // gleichzeitige Downloads beim Vorladen
+
+  // Bausteine, aus denen sich jeder Score zusammensetzen lässt
+  const CALLER_CLIPS = (() => {
+    const list = ['hundred', 'hundred_and'];
+    for (let n = 1; n <= 19; n++) list.push('n' + n);
+    for (let n = 20; n <= 90; n += 10) list.push('n' + n);
+    return list;
+  })();
+
+  /* Feste Ansagen. Je Key mehrere Kandidaten – der erste gefundene gewinnt.
+     Die zweiten Namen sind die Autodarts-Konvention (darts-caller), damit ein
+     Voice-Pack aus dem Autodarts-Umfeld unverändert in audio/caller/ passt.  */
+  const CALLER_ALIAS = {
+    no_score: ['no_score', '0', 'full/0'],
+    game_shot: ['game_shot', 'gameshot'],
+    game_shot_match: ['game_shot_match', 'matchshot'],
+    bust: ['bust', 'busted'],
+    crowd: ['crowd', 'ambient_gameshot']
+  };
+  // Komplettaufnahme eines Scores: erst Autodarts-Layout (Wurzel), dann full/
+  const fullCandidates = n => ['' + n, 'full/' + n];
+
+  const PHRASE_CLIP = {
+    'No score': 'no_score',
+    'Bust!': 'bust',
+    'Game shot!': 'game_shot',
+    'Game shot, and the match!': 'game_shot_match'
+  };
+
+  const cbuf = Object.create(null);   // key -> { buffer, off, dur }
+  let callerLoad = null;              // Promise des laufenden Ladevorgangs
+  let callerMissing = [];
+  let callerPack = null;              // 'full' | 'blocks' | 'none'
+
+  function audioCtx() {
+    if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
+    return actx;
+  }
+
+  // Stille am Anfang/Ende messen, damit die Clips lückenlos aneinanderpassen –
+  // unabhängig davon, wie sauber sie geschnitten wurden.
+  function trimBounds(buffer) {
+    const d = buffer.getChannelData(0), sr = buffer.sampleRate;
+    let s = 0, e = d.length - 1;
+    while (s < d.length && Math.abs(d[s]) < TRIM_THRESHOLD) s++;
+    while (e > s && Math.abs(d[e]) < TRIM_THRESHOLD) e--;
+    if (s >= e) { s = 0; e = d.length - 1; }           // reine Stille: unverändert lassen
+    const pad = Math.round(sr * TRIM_PAD);
+    s = Math.max(0, s - pad);
+    e = Math.min(d.length - 1, e + pad);
+    return { off: s / sr, dur: Math.max(0.05, (e - s) / sr) };
+  }
+
+  function fetchClip(key, url) {
+    return fetch(url)
+      .then(r => r.ok ? r.arrayBuffer() : Promise.reject(new Error('404')))
+      .then(ab => new Promise((res, rej) => {
+        let settled = false;
+        const done = b => {
+          if (settled) return;            // Promise- UND Callback-Form können beide feuern
+          settled = true;
+          cbuf[key] = Object.assign({ buffer: b }, trimBounds(b));
+          res(true);
+        };
+        const fail = err => { if (!settled) { settled = true; rej(err); } };
+        // decodeAudioData: neuere Browser liefern ein Promise, ältere nur Callbacks
+        const p = audioCtx().decodeAudioData(ab, done, fail);
+        if (p && typeof p.then === 'function') p.then(done, fail);
+      }))
+      .catch(() => false);
+  }
+
+  /* Kandidaten der Reihe nach probieren. Liefert den Pfad, der gesessen hat
+     (bzw. null) – so weiß der Aufrufer, welches Layout das Pack benutzt.   */
+  function fetchAny(key, candidates) {
+    const step = i => i >= candidates.length
+      ? Promise.resolve(null)
+      : fetchClip(key, CALLER_BASE + candidates[i] + CALLER_EXT)
+          .then(ok => ok ? candidates[i] : step(i + 1));
+    return step(0);
+  }
+
+  // Aufgaben mit begrenzter Parallelität abarbeiten
+  function runQueue(tasks, limit) {
+    let i = 0;
+    const next = () => i < tasks.length ? tasks[i++]().then(next) : null;
+    return Promise.all(Array.from({ length: Math.min(limit, tasks.length) }, next));
+  }
+
+  /* Lädt einmalig alles, was da ist – in drei Schritten:
+       1. Probe mit ein paar Stichproben. Liegt gar kein Audio-Ordner vor,
+          ist nach vier Fehlversuchen Schluss statt 200 Requests ins Leere.
+       2. Komplettaufnahmen aller Scores (der Autodarts-Fall).
+       3. Bausteine nur, falls das Pack Lücken hat – plus die festen Ansagen.
+     Fehlende Dateien sind nie ein Fehler.                                   */
+  const PROBE = [180, 100, 60];   // Scores, die in praktisch jedem Pack liegen
+
+  function callerLoadAll() {
+    if (callerLoad) return callerLoad;
+    callerMissing = [];
+
+    let style = null;   // '' (Wurzel, Autodarts) oder 'full/'
+    const probes = PROBE.map(n => () =>
+      fetchAny('f' + n, fullCandidates(n)).then(hit => {
+        if (hit !== null && style === null) style = hit.slice(0, hit.length - String(n).length);
+      }));
+    probes.push(() => fetchClip('n20', CALLER_BASE + 'n20' + CALLER_EXT));
+
+    callerLoad = runQueue(probes, LOAD_PARALLEL).then(() => {
+      const hasFull = style !== null;
+      const hasBlocks = !!cbuf.n20;
+      if (!hasFull && !hasBlocks) { callerPack = 'none'; return cbuf; }
+      callerPack = hasFull ? 'full' : 'blocks';
+
+      // Schritt 2: übrige Scores – nur noch im erkannten Layout, ein Request je Score
+      const scores = [];
+      if (hasFull) {
+        for (let n = 0; n <= 180; n++) {
+          if (cbuf['f' + n]) continue;
+          scores.push(((m) => () => fetchClip('f' + m, CALLER_BASE + style + m + CALLER_EXT))(n));
+        }
+      }
+
+      return runQueue(scores, LOAD_PARALLEL).then(() => {
+        let full = 0;
+        for (let n = 0; n <= 180; n++) if (cbuf['f' + n]) full++;
+
+        const tasks = [];
+        // Schritt 3: Bausteine nur laden, wenn das Pack nicht alles abdeckt
+        if (full <= 180) {
+          CALLER_CLIPS.forEach(k => {
+            if (cbuf[k]) return;
+            tasks.push(() => fetchClip(k, CALLER_BASE + k + CALLER_EXT)
+              .then(ok => { if (!ok) callerMissing.push(k); return ok; }));
+          });
+        }
+        Object.keys(CALLER_ALIAS).forEach(k => {
+          if (!cbuf[k]) tasks.push(() => fetchAny(k, CALLER_ALIAS[k]));
+        });
+        return runQueue(tasks, LOAD_PARALLEL).then(() => cbuf);
+      });
+    });
+    return callerLoad;
+  }
+
+  // Score in Wortbausteine zerlegen: 141 -> ['hundred_and','n40','n1']
+  function callerParts(n) {
+    if (n === 0) return ['no_score'];
+    const out = [];
+    let r = n;
+    if (r >= 100) {
+      r -= 100;
+      if (r === 0) return ['hundred'];
+      out.push('hundred_and');
+    }
+    if (r >= 20) { const tens = Math.floor(r / 10) * 10; out.push('n' + tens); r -= tens; }
+    if (r > 0) out.push('n' + r);
+    return out;
+  }
+
+  function playClips(keys, opts) {
+    const ctx = audioCtx();
+    const parts = keys.map(k => cbuf[k]);
+    if (parts.some(p => !p)) return false;
+    if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+
+    let at = ctx.currentTime + 0.04;
+    const start = at;
+    parts.forEach(p => {
+      const src = ctx.createBufferSource(), g = ctx.createGain();
+      src.buffer = p.buffer;
+      src.connect(g); g.connect(ctx.destination);
+      const vol = (opts && opts.gain) || 1;
+      g.gain.setValueAtTime(0, at);
+      g.gain.linearRampToValueAtTime(vol, at + EDGE_FADE);
+      g.gain.setValueAtTime(vol, at + p.dur - EDGE_FADE);
+      g.gain.linearRampToValueAtTime(0, at + p.dur);
+      src.start(at, p.off, p.dur);
+      at += Math.max(0.06, p.dur - JOIN_OVERLAP);
+    });
+
+    // Publikum unter dem 180er, falls vorhanden
+    if (opts && opts.crowd && cbuf.crowd) {
+      const c = cbuf.crowd, src = ctx.createBufferSource(), g = ctx.createGain();
+      src.buffer = c.buffer;
+      src.connect(g); g.connect(ctx.destination);
+      g.gain.setValueAtTime(0, start);
+      g.gain.linearRampToValueAtTime(0.45, start + 0.15);
+      g.gain.setValueAtTime(0.45, start + Math.max(0.4, c.dur - 0.5));
+      g.gain.linearRampToValueAtTime(0, start + c.dur);
+      src.start(start, c.off, c.dur);
+    }
+    return true;
+  }
+
+  function speak(text) {
+    if (!window.speechSynthesis) return;
     try {
       const u = new SpeechSynthesisUtterance(text);
       u.lang = 'en-GB'; u.rate = 0.95;
@@ -293,14 +501,43 @@ const UI = (() => {
       speechSynthesis.speak(u);
     } catch (e) {}
   }
+
+  function say(text) {
+    if (!Store.state.settings.caller) return;
+    callerLoadAll();
+    const key = PHRASE_CLIP[text];
+    if (key && playClips([key])) return;
+    speak(text);
+  }
+
   function callScore(total) {
     if (total === 180) {
-      say('One hundred and eighty!');
       const el = h('div', { class: 'big180' }, h('span', null, '180'));
       document.body.appendChild(el);
       setTimeout(() => el.remove(), 1400);
-    } else if (total === 0) say('No score');
-    else say(String(total));
+    }
+    if (!Store.state.settings.caller) return;
+    callerLoadAll();
+    if (playClips(['f' + total], { crowd: total === 180 })) return;      // komplette Aufnahme
+    if (playClips(callerParts(total), { crowd: total === 180 })) return; // zusammengesetzt
+    speak(total === 180 ? 'One hundred and eighty!' : total === 0 ? 'No score' : String(total));
+  }
+
+  // Für die Anzeige in den Einstellungen
+  function callerStatus() {
+    return callerLoadAll().then(() => {
+      let full = 0;
+      for (let n = 0; n <= 180; n++) if (cbuf['f' + n]) full++;
+      return {
+        pack: callerPack,
+        full,                                            // komplette Score-Aufnahmen
+        blocks: CALLER_CLIPS.filter(k => cbuf[k]).length,
+        blocksNeeded: CALLER_CLIPS.length,
+        missing: callerMissing.slice(),
+        phrases: Object.keys(CALLER_ALIAS).filter(k => cbuf[k]),
+        crowd: !!cbuf.crowd
+      };
+    });
   }
 
   function buzz(ms) {
@@ -327,7 +564,7 @@ const UI = (() => {
   }
   const dstr = ts => new Date(ts).toLocaleDateString(Store.state.settings.lang === 'de' ? 'de-DE' : 'en-GB', { day: '2-digit', month: '2-digit', year: '2-digit' });
 
-  return { toast, modal, confirm, boardSVG, barsChart, lineChart, sfx, say, callScore, buzz, wakeLock, f1, dstr, ic, initials, avatar, dartLabel };
+  return { toast, modal, confirm, boardSVG, barsChart, lineChart, sfx, say, callScore, buzz, wakeLock, f1, dstr, ic, initials, avatar, dartLabel, callerLoad: callerLoadAll, callerStatus, callerParts };
 })();
 
 /* ---------- Dart-Mathematik ---------- */

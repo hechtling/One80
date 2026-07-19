@@ -3,3 +3,10 @@ android/
 ios/
 www/
 package-lock.json
+
+# Caller-Sprachclips bleiben lokal.
+# Sind es eigene Aufnahmen oder ein frei weitergebbares Pack, kann diese Zeile weg –
+# dann landen sie auch in der PWA und in der APK. Mit TV-Mitschnitten drin besser so lassen:
+# das Repo ist öffentlich. Details in audio/caller/README.md.
+audio/caller/*.mp3
+audio/caller/full/*.mp3

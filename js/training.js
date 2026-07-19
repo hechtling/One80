@@ -29,7 +29,12 @@ const Training = (() => {
     }
   }
 
-  /* ---------- generischer Trainings-Screen ---------- */
+  /* ---------- generischer Trainings-Screen ----------
+     session-Optionen:
+       title, st, label(), status(), progress(), dart(d) → {toast, say, sessionEnd}, summary()
+       extra()      – optionales Zusatz-Element unter dem Label (z. B. Raster, Tabelle)
+       timeLimit    – Sekunden; Countdown startet mit dem ersten Dart, 0 = Zeit aus
+  */
   function trainShell(profile, mode, session, restart) {
     App.gameMode(true); UI.wakeLock(true);
     const hist = [];
@@ -45,17 +50,32 @@ const Training = (() => {
       const taskCard = h('div', { class: 'mcard center', style: 'gap:6px;padding:20px' });
       const inpHost = h('div', { style: 'margin-top:auto;display:flex;flex-direction:column' });
       wrap.append(taskCard, inpHost);
+
+      /* Countdown (optional) */
+      let tick = null, left = session.timeLimit || 0;
+      function startClock() {
+        if (!session.timeLimit || tick) return;
+        tick = setInterval(() => {
+          left--;
+          if (left <= 0) { left = 0; stopClock(); update(); session.st.over = true; finish(); }
+          else update();
+        }, 1000);
+      }
+      function stopClock() { if (tick) { clearInterval(tick); tick = null; } }
+      const mmss = s => Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+
       Input.create(inpHost, {
         modes: ['board', 'keys'],
         mode: Store.state.settings.input === 'sum' ? 'board' : Store.state.settings.input,
         onDart: d => {
           if (session.st.over) return;
+          startClock();
           hist.push(JSON.stringify(session.st)); if (hist.length > 60) hist.shift();
           const ev = session.dart(d) || {};
           if (ev.toast) UI.toast(ev.toast);
           if (ev.say) UI.say(ev.say);
           update();
-          if (ev.sessionEnd) { session.st.over = true; finish(); }
+          if (ev.sessionEnd) { stopClock(); session.st.over = true; finish(); }
         },
         onUndo: doUndo
       });
@@ -68,12 +88,19 @@ const Training = (() => {
       }
       function update() {
         taskCard.innerHTML = '';
+        if (session.timeLimit) {
+          taskCard.appendChild(h('div', {
+            class: 'micro',
+            style: 'letter-spacing:1.4px;color:' + (left <= 10 ? 'var(--red)' : 'var(--mut2)')
+          }, t('time_left') + ' ' + mmss(left)));
+        }
         taskCard.appendChild(h('div', { class: 'sub' }, session.status()));
         taskCard.appendChild(h('div', { style: 'font-size:44px;font-weight:700;letter-spacing:-1px;margin:2px 0' }, session.label()));
+        if (session.extra) { const ex = session.extra(); if (ex) taskCard.appendChild(ex); }
         const pr = Math.min(1, session.progress());
         taskCard.appendChild(h('div', { class: 'bar', style: 'margin-top:6px' }, h('i', { style: `width:${pr * 100}%` })));
       }
-      function cleanup() { App.gameMode(false); UI.wakeLock(false); }
+      function cleanup() { stopClock(); App.gameMode(false); UI.wakeLock(false); }
       function finish() {
         const sum = session.summary();
         const prev = profile.trainings[mode] ? profile.trainings[mode].best : null;
@@ -480,16 +507,31 @@ const Training = (() => {
 
   /* ---------- Trainings-Tab ---------- */
 
-  const TRAIN_DEFS = [
-    { id: 'checkout', badge: 'CO', name: 'tr_checkout', desc: 'tr_checkout_d', go: startCheckout },
-    { id: 'scoring', badge: 'T20', name: 'tr_scoring', desc: 'tr_scoring_d', go: configScoring },
-    { id: 'doubles', badge: 'D', name: 'tr_doubles', desc: 'tr_doubles_d', go: startDoubles },
-    { id: 'bobs27', badge: '27', name: 'tr_bobs', desc: 'tr_bobs_d', go: startBobs },
-    { id: 'double_single', badge: 'D+', name: 'tr_double_single', desc: 'tr_double_single_d', go: configDoubleSingle },
-    { id: 'ladder', badge: '170', name: 'tr_ladder', desc: 'tr_ladder_d', go: startLadder },
-    { id: 'jdc', badge: 'JDC', name: 'tr_jdc', desc: 'tr_jdc_d', go: startJDC },
-    { id: 'catch40', badge: 'C40', name: 'tr_catch', desc: 'tr_catch_d', go: configCatch }
+  /* Kategorien – Reihenfolge bestimmt die Anzeige im Trainings-Tab */
+  const TRAIN_CATS = [
+    { id: 'co', name: 'tc_co' },
+    { id: 'score', name: 'tc_score' },
+    { id: 'classic', name: 'tc_classic' },
+    { id: 'warm', name: 'tc_warm' },
+    { id: 'challenge', name: 'tc_challenge' }
   ];
+
+  const TRAIN_DEFS = [
+    { id: 'checkout', cat: 'co', badge: 'CO', name: 'tr_checkout', desc: 'tr_checkout_d', go: startCheckout },
+    { id: 'doubles', cat: 'co', badge: 'D', name: 'tr_doubles', desc: 'tr_doubles_d', go: startDoubles },
+    { id: 'double_single', cat: 'co', badge: 'D+', name: 'tr_double_single', desc: 'tr_double_single_d', go: configDoubleSingle },
+    { id: 'bobs27', cat: 'co', badge: '27', name: 'tr_bobs', desc: 'tr_bobs_d', go: startBobs },
+    { id: 'scoring', cat: 'score', badge: 'T20', name: 'tr_scoring', desc: 'tr_scoring_d', go: configScoring },
+    { id: 'ladder', cat: 'challenge', badge: '170', name: 'tr_ladder', desc: 'tr_ladder_d', go: startLadder },
+    { id: 'jdc', cat: 'challenge', badge: 'JDC', name: 'tr_jdc', desc: 'tr_jdc_d', go: startJDC },
+    { id: 'catch40', cat: 'challenge', badge: 'C40', name: 'tr_catch', desc: 'tr_catch_d', go: configCatch }
+  ];
+
+  /* Registrierung weiterer Modi aus training-extra.js */
+  function register(def) {
+    if (!TRAIN_DEFS.some(d => d.id === def.id)) TRAIN_DEFS.push(def);
+    return def;
+  }
 
   function trainProfile() {
     const id = Store.state.settings.trainProfile;
@@ -518,19 +560,44 @@ const Training = (() => {
       const streak = Store.trainStreak(cur);
       if (streak > 0) view.appendChild(h('div', { class: 'sub', style: 'margin:0 4px 10px;color:var(--grn)' }, t('streak_days', { n: streak })));
     }
-    TRAIN_DEFS.forEach(m => {
+    const open = Store.state.settings.trainOpen = Store.state.settings.trainOpen || {};
+
+    function modeRow(m) {
       const tr = cur && cur.trainings[m.id];
       const last = tr && tr.series && tr.series.length ? tr.series[tr.series.length - 1].v : null;
-      view.appendChild(h('div', { class: 'mrow', onClick: () => { if (cur) m.go(cur); } },
+      const unit = m.unit || '';
+      return h('div', { class: 'mrow', onClick: () => { if (cur) m.go(cur); } },
         h('span', { class: 'badge' }, m.badge),
         h('span', { class: 'mtxt' },
           h('span', { class: 'ttl', style: 'font-size:15px' }, t(m.name)),
           h('span', { class: 'dsc' }, t(m.desc))),
-        tr && tr.best !== null
-          ? h('span', { class: 'meta' }, (last !== null && last !== tr.best ? t('last_lbl') + ': ' + last : 'Best: ' + tr.best))
-          : h('span', { class: 'chev' }, '›')));
+        tr && tr.best !== null && tr.best !== undefined
+          ? h('span', { class: 'meta' }, (last !== null && last !== tr.best ? t('last_lbl') + ': ' + last + unit : 'Best: ' + tr.best + unit))
+          : h('span', { class: 'chev' }, '›'));
+    }
+
+    TRAIN_CATS.forEach(c => {
+      const list = TRAIN_DEFS.filter(m => (m.cat || 'co') === c.id);
+      if (!list.length) return;
+      if (open[c.id] === undefined) open[c.id] = true;
+      const body = h('div', { style: open[c.id] ? '' : 'display:none' }, list.map(modeRow));
+      const caret = h('span', { class: 'chev', style: 'transition:transform .18s' + (open[c.id] ? ';transform:rotate(90deg)' : '') }, '›');
+      view.appendChild(h('div', {
+        class: 'mlabel', style: 'display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none',
+        onClick: () => {
+          open[c.id] = !open[c.id];
+          body.style.display = open[c.id] ? '' : 'none';
+          caret.style.transform = open[c.id] ? 'rotate(90deg)' : '';
+          Store.save();
+        }
+      }, caret, t(c.name), h('span', { style: 'color:var(--dim);font-weight:600' }, String(list.length))));
+      view.appendChild(body);
     });
   }
 
-  return { renderTab, TRAIN_DEFS };
+  return {
+    renderTab, TRAIN_DEFS, TRAIN_CATS, register,
+    /* Bausteine für training-extra.js */
+    trainShell, coDart, trackCoDouble, mergeDoubles, dispKey, randFinish, BOGEY
+  };
 })();
