@@ -1,4 +1,4 @@
-const VERSION = 'one80-v3';
+const VERSION = 'one80-v4';
 const ASSETS = [
   './',
   './index.html',

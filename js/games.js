@@ -342,7 +342,7 @@ const Games = (() => {
         slotsEl.innerHTML = '';
         for (let i = 0; i < 3; i++) {
           const d = p.visitDarts[i];
-          slotsEl.appendChild(h('span', { class: 'slot ' + (d ? 'filled' : 'empty') }, d ? UI.dartLabel(d.key) : '–'));
+          slotsEl.appendChild(h('span', { class: 'slot ' + (d ? 'filled' : 'free') }, d ? UI.dartLabel(d.key) : '–'));
         }
         slotsEl.appendChild(h('span', { class: 'vsum' },
           h('span', { class: 'micro' }, t('visit_lbl')),
@@ -512,7 +512,7 @@ const Games = (() => {
 
   const visitRow = st => h('div', { class: 'slots', style: 'margin-bottom:4px' },
     [0, 1, 2].map(i => h('span', {
-      class: 'slot ' + (st.visitDarts[i] ? 'filled' : 'empty'),
+      class: 'slot ' + (st.visitDarts[i] ? 'filled' : 'free'),
       style: 'height:44px;font-size:14px'
     }, st.visitDarts[i] ? UI.dartLabel(st.visitDarts[i]) : '–')));
 
